@@ -12,10 +12,13 @@ from LaneAdviser import LaneAdviser
 
 class IntersectionManager:
     def __init__(self):
+        self.az_list = dict()
+        self.pz_list = dict()
+
         self.car_list = dict()   # Cars that needs to be handled
         self.cc_list = dict()    # Cars under Cruse Control in CCZ
         self.leaving_cars = dict()   # Cars just entered the intersection (leave the CC zone)
-        self.az_list = dict()
+
         self.schedule_period_count = 0
         self.lane_advisor = LaneAdviser()
         self.scheduling_thread = None
@@ -45,7 +48,7 @@ class IntersectionManager:
                 self.out_lanes.append('-'+idx_str)
 
 
-    def add_cars(self, car_id, lane_id, simu_step):
+    def update_car(self, car_id, lane_id, simu_step):
         if lane_id in self.in_lanes:
             lane = ((4-int(lane_id[0]))*cfg.LANE_NUM_PER_DIRECTION) + (cfg.LANE_NUM_PER_DIRECTION-int(lane_id[2])-1)
 
@@ -65,6 +68,23 @@ class IntersectionManager:
             self.car_list[car_id].setPosition(position)
 
 
+            if self.car_list[car_id].zone == None:
+                self.car_list[car_id].zone = "AZ"
+                self.car_list[car_id].zone_state = "AZ_not_advised"
+
+            elif (self.car_list[car_id].zone == "AZ") and (position <= cfg.PZ_LEN + cfg.GZ_LEN + cfg.BZ_LEN + cfg.CCZ_LEN):
+                self.car_list[car_id].zone = "PZ"
+                self.car_list[car_id].zone_state = "PZ_not_set"
+
+            elif (self.car_list[car_id].zone == "PZ") and (position <= cfg.GZ_LEN + cfg.BZ_LEN + cfg.CCZ_LEN):
+                self.car_list[car_id].zone = "GZ"
+                self.car_list[car_id].zone_state = "not_scheduled"
+
+            elif (self.car_list[car_id].zone == "GZ") and (position <= cfg.BZ_LEN + cfg.CCZ_LEN):
+                self.car_list[car_id].zone = "BZ"
+
+            elif (self.car_list[car_id].zone == "BZ") and (position <= cfg.CCZ_LEN):
+                self.car_list[car_id].zone = "CCZ"
 
 
     def run(self, simu_step):
@@ -74,8 +94,6 @@ class IntersectionManager:
             # Update when the car is scheduled
             if self.car_list[car_key].OT != None:
                 self.car_list[car_key].OT -= cfg.TIME_STEP
-
-
 
 
         # ===== Entering the intersection (Record the cars) =====
@@ -95,6 +113,10 @@ class IntersectionManager:
                 self.car_num += 1
 
                 self.car_list.pop(car_id)
+                car.zone == "Intersection"
+
+                #if car.CC_back_car != None:
+                    #car.CC_back_car.CC_front_car = None
 
 
         # ===== Leaving the intersection (Reset the speed to V_max) =====
@@ -118,7 +140,6 @@ class IntersectionManager:
 
 
 
-
         ##############################################
         # Grouping the cars and schedule
         # Put here due to the thread handling
@@ -131,13 +152,13 @@ class IntersectionManager:
                 n_sched_car = []
                 advised_n_sched_car = []
                 for car_id, car in self.car_list.items():
-                    if car.position <= cfg.CCZ_LEN + cfg.BZ_LEN + cfg.GZ_LEN:
-                        if car.D is None:
-                            n_sched_car.append(self.car_list[car_id])
+                    if car.zone == "GZ" or car.zone == "BZ" or car.zone == "CCZ":
+                        if car.zone_state == "not_scheduled":
+                            n_sched_car.append(car)
                         else:
-                            sched_car.append(self.car_list[car_id])
-                    elif car.position <= cfg.CCZ_LEN + cfg.BZ_LEN + cfg.GZ_LEN + cfg.PZ_LEN + cfg.AZ_LEN:
-                        advised_n_sched_car.append(self.car_list[car_id])
+                            sched_car.append(car)
+                    elif car.zone == "PZ" or car.zone == "AZ":
+                        advised_n_sched_car.append(car)
 
 
                 for c_idx in range(len(n_sched_car)):
@@ -160,11 +181,11 @@ class IntersectionManager:
 
             ################################################
             # Set Max Speed in PZ
-            for car_id, car in self.car_list.items():
-                if (car.position <= cfg.CCZ_LEN + cfg.BZ_LEN + cfg.GZ_LEN + cfg.PZ_LEN) and (car.position > cfg.CCZ_LEN + cfg.BZ_LEN + cfg.GZ_LEN):
+            for car_id, car in self.az_list.items():
+                if car.zone == "PZ" and car.zone_state == "PZ_not_set":
 
-                    if car_id in self.az_list:
-                        del self.az_list[car_id]
+                    self.pz_list[car_id] = car
+                    del self.az_list[car_id]
 
                     # Take over the speed control from the car
                     traci.vehicle.setSpeedMode(car_id, 0)
@@ -180,13 +201,13 @@ class IntersectionManager:
                     # Stay on its lane
                     traci.vehicle.changeLane(car_id, int(lane_id[2]), 10.0)
 
-                    if self.car_list[car_id].CC_front_car == None and self.CC_last_cars_on_lanes[lane] != None:
-                        if self.CC_last_cars_on_lanes[lane].ID != self.car_list[car_id].ID:
-                            self.car_list[car_id].CC_front_car = self.CC_last_cars_on_lanes[lane]
+                    if car.CC_front_car == None and self.CC_last_cars_on_lanes[lane] != None:
+                        car.CC_front_car = self.CC_last_cars_on_lanes[lane]
+                        car.CC_front_car.CC_back_car = car
 
-                    self.CC_last_cars_on_lanes[lane] = self.car_list[car_id]
+                    self.CC_last_cars_on_lanes[lane] = car
 
-
+                    car.zone_state = "PZ_set"
 
 
 
@@ -234,8 +255,8 @@ class IntersectionManager:
             ################################################
             # Change lane in AZ
             for car_id, car in self.car_list.items():
-                if (car.position > cfg.CCZ_LEN + cfg.BZ_LEN + cfg.GZ_LEN + cfg.PZ_LEN):
-                    self.az_list[car_id] = self.car_list[car_id]
+                if car.zone == "AZ" and car.zone_state == "AZ_not_advised":
+                    self.az_list[car_id] = car
 
                     traci.vehicle.setMinGap(car_id, 1)
                     traci.vehicle.setLaneChangeMode(car_id, 256)
@@ -244,17 +265,16 @@ class IntersectionManager:
                     time_in_AZ = cfg.AZ_LEN/cfg.MAX_SPEED *3
 
 
-                    advised_lane = self.lane_advisor.adviseLaneShortestTrajectory(self.car_list[car_id])
+                    advised_lane = self.lane_advisor.adviseLaneShortestTrajectory(car)
                     #advised_lane = self.lane_advisor.adviseLane(self.car_list[car_id])
                     #advised_lane = self.lane_advisor.adviseLane_v2(self.car_list[car_id])
                     #advised_lane = random.randrange(0, cfg.LANE_NUM_PER_DIRECTION)
 
                     traci.vehicle.changeLane(car_id, advised_lane, time_in_AZ)
-                    self.car_list[car_id].desired_lane = (cfg.LANE_NUM_PER_DIRECTION-advised_lane-1)+(self.car_list[car_id].lane//cfg.LANE_NUM_PER_DIRECTION)*cfg.LANE_NUM_PER_DIRECTION
+                    car.desired_lane = (cfg.LANE_NUM_PER_DIRECTION-advised_lane-1)+(car.lane//cfg.LANE_NUM_PER_DIRECTION)*cfg.LANE_NUM_PER_DIRECTION
                     #self.car_list[car_id].desired_lane = car.lane
 
-
-                    #myGraphic.gui.updateGraph()
+                    car.zone_state = "AZ_advised"
 
 
             ###########################################################
@@ -281,6 +301,9 @@ def Scheduling(lane_advisor, sched_car, n_sched_car, advised_n_sched_car, cc_lis
 
 
     lane_advisor.updateTableFromCars(n_sched_car, advised_n_sched_car)
+
+    for car in n_sched_car:
+        car.zone_state = "scheduled"
 
     # Handle the speed control computation
     n_cars_on_lanes = dict()

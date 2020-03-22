@@ -63,7 +63,7 @@ def run():
             # Update the position of each car
             for car_id in all_c:
                 lane_id = traci.vehicle.getLaneID(car_id)
-                intersection_manager.add_cars(car_id, lane_id, simu_step)
+                intersection_manager.update_car(car_id, lane_id, simu_step)
 
             intersection_manager.run(simu_step)
             simu_step += cfg.TIME_STEP

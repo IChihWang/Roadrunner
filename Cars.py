@@ -63,6 +63,12 @@ class Car:
         # ======================================================================
 
 
+        # ===== Zone stage =====================================================
+        self.zone = None
+        self.zone_state = None
+        # ======================================================================
+
+
 
         # ===== Variables for Cruse Control ====================================
         self.CC_stage = None
@@ -73,6 +79,9 @@ class Car:
         self.CC_stop_n_go = 0            # A car needs to stop and go
         self.CC_stop_n_go_remained = 0   # Count down the stop-and-go timer
         self.CC_front_car = None
+        self.CC_back_car = None
+
+
         self.CC_front_pos_diff = None    # Original distance between self and the front car
         self.CC_following = None
         self.CC_done_scheduling = False
@@ -81,6 +90,9 @@ class Car:
         self.CC_auto_stop_n_go = False
         self.CC_auto_slow_down_speed = None
         self.CC_auto = False
+
+
+        self.CC_is_following = False
 
         # ======================================================================
 
@@ -115,6 +127,24 @@ class Car:
 
     def setPosition(self, pos):
         self.position = pos
+
+
+
+    def handle_CC_behavior_general(self):
+
+        if "S_9" in self.car_list:
+             print(traci.vehicle.getLeader("S_9"))
+
+
+        # 1. Detect potential crashing
+        if self.CC_front_car != None:
+        else:
+            self.CC_is_following
+
+        # 1. Decelerate for stopping
+        if self.position < (2*cfg.CCZ_ACC_LEN+cfg.CCZ_DEC2_LEN):
+
+            None
 
 
     def handle_CC_behavior(self, car_list):
