@@ -1,10 +1,10 @@
 <routes>
 
-	<vType id="car5" accel="100.0" decel="100.0" sigma="0.0" length="5" minGap="1.0" maxSpeed="11.180000" carFollowModel="CACC" color="255,255,255"/>
-	<vType id="car6" accel="100.0" decel="100.0" sigma="0.0" length="6" minGap="1.0" maxSpeed="11.180000" carFollowModel="CACC" color="255,255,255"/>
-	<vType id="car7" accel="100.0" decel="100.0" sigma="0.0" length="7" minGap="1.0" maxSpeed="11.180000" carFollowModel="CACC" color="255,255,255"/>
-	<vType id="car8" accel="100.0" decel="100.0" sigma="0.0" length="8" minGap="1.0" maxSpeed="11.180000" carFollowModel="CACC" color="255,255,255"/>
-	<vType id="car9" accel="100.0" decel="100.0" sigma="0.0" length="9" minGap="1.0" maxSpeed="11.180000" carFollowModel="CACC" color="255,255,255"/>
+	<vType id="car5" accel="100.0" decel="100.0" sigma="0.0" length="5" minGap="0.0" maxSpeed="11.180000" carFollowModel="CACC" color="255,255,255"/>
+	<vType id="car6" accel="100.0" decel="100.0" sigma="0.0" length="6" minGap="0.0" maxSpeed="11.180000" carFollowModel="CACC" color="255,255,255"/>
+	<vType id="car7" accel="100.0" decel="100.0" sigma="0.0" length="7" minGap="0.0" maxSpeed="11.180000" carFollowModel="CACC" color="255,255,255"/>
+	<vType id="car8" accel="100.0" decel="100.0" sigma="0.0" length="8" minGap="0.0" maxSpeed="11.180000" carFollowModel="CACC" color="255,255,255"/>
+	<vType id="car9" accel="100.0" decel="100.0" sigma="0.0" length="9" minGap="0.0" maxSpeed="11.180000" carFollowModel="CACC" color="255,255,255"/>
 
 	<route id="route1_2" edges=" 1 -2"/>
 	<route id="route1_3" edges=" 1 -3"/>

@@ -28,7 +28,7 @@ def generate_routefile(arrival_rate):
         print("<routes>\n", file=routes)
 
         for i in range(5,10):
-            vType_str = '\t<vType id="car%i" accel="100.0" decel="100.0" sigma="0.0" length="%i" minGap="1.0" maxSpeed="%f" carFollowModel="CACC" color="255,255,255"/>' % (i, i, cfg.MAX_SPEED);
+            vType_str = '\t<vType id="car%i" accel="100.0" decel="100.0" sigma="0.0" length="%i" minGap="0.0" maxSpeed="%f" carFollowModel="CACC" color="255,255,255"/>' % (i, i, cfg.MAX_SPEED);
 
             print(vType_str, file=routes)
 

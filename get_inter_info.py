@@ -57,7 +57,7 @@ class Data:
 
         l1 = car1.lane
         l2 = car2.lane
-    
+
         # rotate to corresponding cases
         if l1 >= cfg.LANE_NUM_PER_DIRECTION:
             l2 = (l2 - (l1//cfg.LANE_NUM_PER_DIRECTION)*cfg.LANE_NUM_PER_DIRECTION) % (cfg.LANE_NUM_PER_DIRECTION*4)
@@ -80,10 +80,10 @@ class Data:
             # 1. Compute tau_S1_S2
             tau_S1_S2 = None
             # --- case 1: from Xm, Ym
-            ans1 = (val['Xm']+car1.length)/car1.speed_in_int - (val['Ym'])/car2.speed_in_int+cfg.DISTANCE*cfg.LANE_WIDTH/car1.speed_in_int
+            ans1 = (val['Xm']+car1.length)/car1.speed_in_intersection - (val['Ym'])/car2.speed_in_intersection+cfg.DISTANCE*cfg.LANE_WIDTH/car1.speed_in_intersection
 
             # --- case 2: from Xd, Yd
-            ans2 = (val['Xd']+car1.length)/car1.speed_in_int - (val['Yd'])/car2.speed_in_int+cfg.DISTANCE*cfg.LANE_WIDTH/car1.speed_in_int
+            ans2 = (val['Xd']+car1.length)/car1.speed_in_intersection - (val['Yd'])/car2.speed_in_intersection+cfg.DISTANCE*cfg.LANE_WIDTH/car1.speed_in_intersection
 
             tau_S1_S2 = max(ans1, ans2)
 
@@ -93,10 +93,10 @@ class Data:
             # 2. Compute tau_S2_S1
             tau_S2_S1 = None
             # --- case 1: from Xm, Ym
-            ans1 = (val['Ym']+car2.length)/car2.speed_in_int - (val['Xm'])/car1.speed_in_int+cfg.DISTANCE*cfg.LANE_WIDTH/car2.speed_in_int
+            ans1 = (val['Ym']+car2.length)/car2.speed_in_intersection - (val['Xm'])/car1.speed_in_intersection+cfg.DISTANCE*cfg.LANE_WIDTH/car2.speed_in_intersection
 
             # --- case 2: from Xd, Yd
-            ans2 = (val['Yd']+car2.length)/car2.speed_in_int - (val['Xd'])/car1.speed_in_int+cfg.DISTANCE*cfg.LANE_WIDTH/car2.speed_in_int
+            ans2 = (val['Yd']+car2.length)/car2.speed_in_intersection - (val['Xd'])/car1.speed_in_intersection+cfg.DISTANCE*cfg.LANE_WIDTH/car2.speed_in_intersection
 
             tau_S2_S1 = max(ans1, ans2)
 
