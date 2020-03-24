@@ -137,19 +137,6 @@ class IntersectionManager:
 
 
 
-        ##########################################
-        # Cruse Control
-
-        # Start to let cars control itself once it enters the CCZ
-        # Each car perform their own Cruise Control behavior
-        sorted_pz_list = sorted(self.pz_list.items(), key=lambda x: x[1].position)
-        # SUPER IMPORTANT: sorted to ensure the following car speed
-        for car_id, car in sorted_pz_list:
-            # Cars perform their own CC
-            car.handle_CC_behavior_general(self.car_list)
-
-
-
         ##############################################
         # Grouping the cars and schedule
         # Put here due to the thread handling
@@ -199,7 +186,20 @@ class IntersectionManager:
 
                 # Take over the speed control from the car
                 traci.vehicle.setSpeedMode(car_id, 0)
+
+                '''
                 traci.vehicle.setSpeed(car_id, cfg.MAX_SPEED)
+                '''
+
+                car.CC_state = "Preseting_ready"
+                '''
+                traci.vehicle.setMaxSpeed(self.ID, cfg.MAX_SPEED)
+                dec_time = (max(cfg.MAX_SPEED-my_speed, my_speed-cfg.MAX_SPEED))/cfg.MAX_ACC
+                self.CC_slowdown_timer = dec_time
+                traci.vehicle.slowDown(self.ID,cfg.MAX_SPEED, dec_time)
+                '''
+
+
 
                 # Cancel the auto gap
                 traci.vehicle.setLaneChangeMode(car_id, 0)
@@ -214,6 +214,17 @@ class IntersectionManager:
 
                 car.zone_state = "PZ_set"
 
+
+        ##########################################
+        # Cruse Control
+
+        # Start to let cars control itself once it enters the CCZ
+        # Each car perform their own Cruise Control behavior
+        sorted_pz_list = sorted(self.pz_list.items(), key=lambda x: x[1].position)
+        # SUPER IMPORTANT: sorted to ensure the following car speed
+        for car_id, car in sorted_pz_list:
+            # Cars perform their own CC
+            car.handle_CC_behavior_general(self.car_list)
 
 
         #======================================

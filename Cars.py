@@ -148,10 +148,9 @@ class Car:
                 front_car = car_list[front_car_ID]
                 front_distance = leader_tuple[1]
 
-            
+
         self.CC_front_car = front_car
         front_speed = self.CC_get_front_speed_general()
-
 
         # 1. Detect if the front car is too close
         if (self.CC_state == None) or (not ("Platoon" in self.CC_state or "Entering" in self.CC_state)):
@@ -224,7 +223,7 @@ class Car:
 
         elif (self.CC_state == "Entering_adjusting_speed") and (self.CC_slowdown_timer <= 0):
             self.CC_state = "Entering_intersection"
-            traci.vehicle.setSpeed(self.ID, cfg.speed_in_intersection)
+            traci.vehicle.setSpeed(self.ID, self.speed_in_intersection)
 
         elif (self.CC_state == "Platoon_catchup"):
             if front_car == None:
@@ -235,19 +234,21 @@ class Car:
                     self.CC_state = "Max_speed"
             else:
                 my_speed = traci.vehicle.getSpeed(self.ID)
-                if (my_speed - cfg.MAX_ACC*cfg.TIME_STEP <= front_speed) and front_distance > cfg.HEADWAY + (my_speed - front_speed)*cfg.TIME_STEP:
-                    # Going to follow, but not close enough
-                    ideal_target_speed = (front_distance - cfg.HEADWAY)/cfg.TIME_STEP + front_speed
-                    target_speed = max(-cfg.MAX_ACC*cfg.TIME_STEP, min(cfg.MAX_ACC*cfg.TIME_STEP, ideal_target_speed-my_speed)) + my_speed
-                    traci.vehicle.setSpeed(self.ID, target_speed)
+                min_catch_up_time = (my_speed-front_speed)/cfg.MAX_ACC
+                min_distance = (my_speed-front_speed)*min_catch_up_time
 
-                elif (my_speed == front_speed) and front_distance <= cfg.HEADWAY:
-                    # Same speed, start following
-                    traci.vehicle.setSpeed(self.ID, front_speed)
-                    self.CC_state = "Platoon_following"
-                else:
-                    # Keep reducing speed when catching up
+                if front_distance < min_distance + cfg.HEADWAY:
                     target_speed = max(front_speed, my_speed - cfg.MAX_ACC*cfg.TIME_STEP)
+
+                    if front_speed == target_speed and front_distance <= cfg.HEADWAY:
+                        self.CC_state = "Platoon_following"
+                        traci.vehicle.setSpeed(self.ID, front_speed)
+                    else:
+                        target_speed = max(front_speed, my_speed - cfg.MAX_ACC*cfg.TIME_STEP)
+                        traci.vehicle.setSpeed(self.ID, target_speed)
+                else:
+                    my_speed = traci.vehicle.getSpeed(self.ID)
+                    target_speed = min(cfg.MAX_SPEED, my_speed + cfg.MAX_ACC*cfg.TIME_STEP)
                     traci.vehicle.setSpeed(self.ID, target_speed)
 
         elif (self.CC_state == "Platoon_following"):
@@ -259,6 +260,20 @@ class Car:
                     self.CC_state = "Max_speed"
             else:
                 traci.vehicle.setSpeed(self.ID, front_speed)
+
+        elif (self.CC_state == "Preseting_ready"):
+            my_speed = traci.vehicle.getSpeed(self.ID)
+            traci.vehicle.setMaxSpeed(self.ID, cfg.MAX_SPEED)
+            dec_time = (max(cfg.MAX_SPEED-my_speed, my_speed-cfg.MAX_SPEED))/cfg.MAX_ACC
+            self.CC_slowdown_timer = dec_time
+            traci.vehicle.slowDown(self.ID,cfg.MAX_SPEED, dec_time)
+            self.CC_state = "Preseting_adjusting_speed"
+
+
+        elif (self.CC_state == "Preseting_adjusting_speed") and (self.CC_slowdown_timer <= 0):
+             traci.vehicle.setSpeed(self.ID, cfg.MAX_SPEED)
+             self.CC_state = None
+
 
 
 

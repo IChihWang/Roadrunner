@@ -19,7 +19,6 @@
 
     <gui_only>
         <start value = 't'/>
-        <quit-on-end value = 't'/>
     </gui_only>
 
 </configuration>
