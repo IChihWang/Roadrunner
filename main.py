@@ -78,7 +78,7 @@ def run():
     # Print out the measurements
     #print("Average total delay: ", total_delays/car_num)
     #print("Average delay by scheduling: ", total_delays_by_sche/car_num)
-    print(total_delays/car_num, total_delays_by_sche/car_num, car_num)
+    print(intersection_manager.total_delays/intersection_manager.car_num, intersection_manager.total_delays_by_sche/intersection_manager.car_num, intersection_manager.car_num)
 
     sys.stdout.flush()
 

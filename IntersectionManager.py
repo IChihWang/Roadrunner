@@ -140,8 +140,8 @@ class IntersectionManager:
         ##############################################
         # Grouping the cars and schedule
         # Put here due to the thread handling
-        self.schedule_period_count += 1
-        if self.schedule_period_count > (1/cfg.TIME_STEP)*cfg.GZ_LEN/cfg.MAX_SPEED-1:
+        self.schedule_period_count += cfg.TIME_STEP
+        if self.schedule_period_count > cfg.GZ_LEN/cfg.MAX_SPEED -1:
             if self.scheduling_thread == None or (not self.scheduling_thread.isAlive()):
 
                 # Classify the cars for scheduler
@@ -156,6 +156,7 @@ class IntersectionManager:
                             sched_car.append(car)
                     elif car.zone == "PZ" or car.zone == "AZ":
                         advised_n_sched_car.append(car)
+
 
 
                 for c_idx in range(len(n_sched_car)):
@@ -276,14 +277,15 @@ class IntersectionManager:
                 self.az_list[car_id] = car
 
                 traci.vehicle.setMinGap(car_id, 1)
-                traci.vehicle.setLaneChangeMode(car_id, 256)
+                #traci.vehicle.setLaneChangeMode(car_id, 256)
+                traci.vehicle.setLaneChangeMode(car_id, 272)
                 # 256 (collision avoidance) or 512 (collision avoidance and safety-gap enforcement)
 
                 time_in_AZ = cfg.AZ_LEN/cfg.MAX_SPEED *3
 
 
-                advised_lane = self.lane_advisor.adviseLaneShortestTrajectory(car)
-                #advised_lane = self.lane_advisor.adviseLane(self.car_list[car_id])
+                #advised_lane = self.lane_advisor.adviseLaneShortestTrajectory(car)
+                advised_lane = self.lane_advisor.adviseLane(self.car_list[car_id])
                 #advised_lane = self.lane_advisor.adviseLane_v2(self.car_list[car_id])
                 #advised_lane = random.randrange(0, cfg.LANE_NUM_PER_DIRECTION)
 

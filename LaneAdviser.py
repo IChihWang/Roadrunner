@@ -56,7 +56,7 @@ class LaneAdviser:
         #'''
 
         # Case 3: (case 1 + considering the halt) update with the latest car
-        #'''
+        '''
         latest_delay_list = dict()
         cars_on_lanes = dict()
         for idx in range(4*cfg.LANE_NUM_PER_DIRECTION):
@@ -77,6 +77,26 @@ class LaneAdviser:
             else:
                 self.updateTable(car.lane, car.turning, car.position/cfg.MAX_SPEED, self.timeMatrix)
         #'''
+
+        # Case 4: (case 1 + considering the halt) update with the latest car  "Using desired_lane!!!!!!!""
+        for car in advised_n_sched_car:
+            latest_delay_list = dict()
+            cars_on_lanes = dict()
+            for idx in range(4*cfg.LANE_NUM_PER_DIRECTION):
+                cars_on_lanes[idx] = []
+            for car in n_sched_car:
+                cars_on_lanes[car.desired_lane].append(car)
+            for idx in range(4*cfg.LANE_NUM_PER_DIRECTION):
+                sorted_car_list = sorted(cars_on_lanes[idx], key=lambda car: car.position, reverse=True)
+                if len(sorted_car_list) > 0:
+                    latest_delay_list[idx] = sorted_car_list[0].D
+                else:
+                    latest_delay_list[idx] = 0
+
+            if (car.CC_state != None) and  ("Platoon" in car.CC_state):
+                self.updateTable(car.lane, car.turning, car.position/cfg.MAX_SPEED+latest_delay_list[idx], self.timeMatrix)
+            else:
+                self.updateTable(car.lane, car.turning, car.position/cfg.MAX_SPEED, self.timeMatrix)
 
 
         # Count car number on each lane of advised but not scheduled
@@ -169,6 +189,7 @@ class LaneAdviser:
         return cfg.LANE_NUM_PER_DIRECTION-advise_lane-1 # The index of SUMO is reversed
 
 
+    '''
     # Give lane advice to Cars
     def adviseLane_v2(self, car):
         advise_lane = None
@@ -252,7 +273,7 @@ class LaneAdviser:
         #myGraphic.gui.setAdviseMatrix(self.advised_lane)
 
         return cfg.LANE_NUM_PER_DIRECTION-advise_lane-1 # The index of SUMO is reversed
-
+    '''
 
     # Give lane advice to Cars
     def adviseLaneShortestTrajectory(self, car):
