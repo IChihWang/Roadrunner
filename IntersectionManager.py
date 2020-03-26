@@ -149,8 +149,8 @@ class IntersectionManager:
                 self.ccz_list[car_id] = car
                 del self.pz_list[car_id]
 
-                if (car.CC_state == None):
-                    car.CC_state = "CruiseControl_ready"
+                #if (car.CC_state == None):
+                    #car.CC_state = "CruiseControl_ready"
 
 
 
@@ -232,7 +232,7 @@ class IntersectionManager:
         # SUPER IMPORTANT: sorted to ensure the following car speed
         for car_id, car in sorted_ccontrol_list:
             # Cars perform their own CC
-            car.handle_CC_behavior_general(self.car_list)
+            car.handle_CC_behavior(self.car_list)
 
 
 
@@ -262,16 +262,6 @@ class IntersectionManager:
                 car.zone_state = "AZ_advised"
 
 
-        ###########################################################
-        # Handle halting in AZ
-        # Must be after PZ_len, because its function overwite some commands
-        for id, car in self.az_list.items():
-            car.handleHalting()
-
-
-            lane_id = traci.vehicle.getLaneID(id)
-            lane = ((4-int(lane_id[0]))*cfg.LANE_NUM_PER_DIRECTION) + (cfg.LANE_NUM_PER_DIRECTION-int(lane_id[2])-1)
-            self.car_list[id].lane = lane
 
 
 ##########################
