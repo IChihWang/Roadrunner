@@ -54,7 +54,7 @@ def run():
     try:
         while traci.simulation.getMinExpectedNumber() > 0:
 
-            if (simu_step*10)//1/10.0 == 600:
+            if (simu_step*10)//1/10.0 == 100:
                 break
 
 
@@ -79,6 +79,8 @@ def run():
     #print("Average total delay: ", total_delays/car_num)
     #print("Average delay by scheduling: ", total_delays_by_sche/car_num)
     print(intersection_manager.total_delays/intersection_manager.car_num, intersection_manager.total_delays_by_sche/intersection_manager.car_num, intersection_manager.car_num)
+
+    print("avg_fuel = ",intersection_manager.total_fuel_consumption/intersection_manager.fuel_consumption_count)
 
     sys.stdout.flush()
 

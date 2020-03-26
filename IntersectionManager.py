@@ -14,6 +14,7 @@ class IntersectionManager:
     def __init__(self):
         self.az_list = dict()
         self.pz_list = dict()
+        self.ccz_list = dict()
 
         self.car_list = dict()   # Cars that needs to be handled
         self.cc_list = dict()    # Cars under Cruse Control in CCZ
@@ -35,6 +36,9 @@ class IntersectionManager:
         self.total_delays = 0
         self.total_delays_by_sche = 0
         self.car_num = 0
+
+        self.total_fuel_consumption = 0
+        self.fuel_consumption_count = 0
 
 
         self.set_round_lane()
@@ -95,6 +99,9 @@ class IntersectionManager:
             if self.car_list[car_key].OT != None:
                 self.car_list[car_key].OT -= cfg.TIME_STEP
 
+            self.total_fuel_consumption += traci.vehicle.getFuelConsumption(car_key)*cfg.TIME_STEP
+            self.fuel_consumption_count += 1
+
 
         # ===== Entering the intersection (Record the cars) =====
         for car_id, car in self.car_list.items():
@@ -102,7 +109,7 @@ class IntersectionManager:
             if lane_id not in self.in_lanes:
                 traci.vehicle.setSpeed(car_id, car.speed_in_intersection)
 
-                self.pz_list.pop(car_id)
+                del self.ccz_list[car_id]
 
                 self.leaving_cars[car_id] = self.car_list[car_id]
                 self.car_list[car_id].Leave_T = simu_step
@@ -133,6 +140,17 @@ class IntersectionManager:
             if lane_id in self.out_lanes:
                 traci.vehicle.setSpeed(car_id, cfg.MAX_SPEED)
                 del self.leaving_cars[car_id]
+
+
+        # ===== Starting Cruise control
+        for car_id, car in self.pz_list.items():
+            if car.position <= cfg.CCZ_LEN and isinstance(car.D, float):
+
+                self.ccz_list[car_id] = car
+                del self.pz_list[car_id]
+
+                if (car.CC_state == None):
+                    car.CC_state = "CruiseControl_ready"
 
 
 
@@ -187,20 +205,7 @@ class IntersectionManager:
 
                 # Take over the speed control from the car
                 traci.vehicle.setSpeedMode(car_id, 0)
-
-                '''
-                traci.vehicle.setSpeed(car_id, cfg.MAX_SPEED)
-                '''
-
                 car.CC_state = "Preseting_ready"
-                '''
-                traci.vehicle.setMaxSpeed(self.ID, cfg.MAX_SPEED)
-                dec_time = (max(cfg.MAX_SPEED-my_speed, my_speed-cfg.MAX_SPEED))/cfg.MAX_ACC
-                self.CC_slowdown_timer = dec_time
-                traci.vehicle.slowDown(self.ID,cfg.MAX_SPEED, dec_time)
-                '''
-
-
 
                 # Cancel the auto gap
                 traci.vehicle.setLaneChangeMode(car_id, 0)
@@ -221,53 +226,14 @@ class IntersectionManager:
 
         # Start to let cars control itself once it enters the CCZ
         # Each car perform their own Cruise Control behavior
-        sorted_pz_list = sorted(self.pz_list.items(), key=lambda x: x[1].position)
+        ccontrol_list = self.pz_list.copy()
+        ccontrol_list.update(self.ccz_list)
+        sorted_ccontrol_list = sorted(ccontrol_list.items(), key=lambda x: x[1].position)
         # SUPER IMPORTANT: sorted to ensure the following car speed
-        for car_id, car in sorted_pz_list:
+        for car_id, car in sorted_ccontrol_list:
             # Cars perform their own CC
             car.handle_CC_behavior_general(self.car_list)
 
-
-        #======================================
-        # Handle halting
-        '''
-        cars_need_handle = dict()
-        available_space = dict()
-        is_congested = dict()
-        for idx in range(4*cfg.LANE_NUM_PER_DIRECTION):
-            cars_need_handle[idx] = []
-            available_space[idx] = cfg.CCZ_LEN
-            is_congested[idx] = False
-
-        for car_id, car in self.car_list.items():
-            if car.CC_shift != None:
-                if available_space[car.lane] > max(car.CC_shift, cfg.CCZ_LEN-car.position):
-                    available_space[car.lane] = max(car.CC_shift, cfg.CCZ_LEN-car.position)
-                if car.CC_shift < 0:
-                    is_congested[car.lane] = True
-            elif car.position > cfg.CCZ_LEN+cfg.BZ_LEN+cfg.GZ_LEN+cfg.PZ_LEN:
-                cars_need_handle[car.lane].append(car)
-
-
-        for car_id, car in self.car_list.items():
-            if car.CC_shift == None and car.position < cfg.CCZ_LEN+cfg.BZ_LEN+cfg.GZ_LEN+cfg.PZ_LEN:
-                available_space[car.lane] -= car.length+cfg.HEADWAY
-
-        for idx in range(4*cfg.LANE_NUM_PER_DIRECTION):
-            sorted_car_list = sorted(cars_need_handle[idx], key=lambda car: car.position)
-
-            #print(idx, is_congested[idx], available_space[idx])
-            for car in sorted_car_list:
-                if is_congested[idx] == True:
-                    car.setHalting(True)
-                else:
-                    if available_space[idx] > car.length:
-                        car.setHalting(False)
-                    else:
-                        car.setHalting(True)
-
-                    available_space[idx] -= (car.length + cfg.HEADWAY)
-        '''
 
 
         ################################################
@@ -323,23 +289,3 @@ def Scheduling(lane_advisor, sched_car, n_sched_car, advised_n_sched_car, cc_lis
 
     for car in n_sched_car:
         car.zone_state = "scheduled"
-
-    # Handle the speed control computation
-    n_cars_on_lanes = dict()
-    for idx in range(4*cfg.LANE_NUM_PER_DIRECTION):
-        n_cars_on_lanes[idx] = []
-
-    # Handle car behavior and detect congestion
-    for car in n_sched_car:
-        # Getting ready for CC
-        car.CC_stage = '0 Not Handled Yet'
-        n_cars_on_lanes[car.lane].append(car)
-
-
-
-    for idx in range(4*cfg.LANE_NUM_PER_DIRECTION):
-        sorted_car_list = sorted(n_cars_on_lanes[idx], key=lambda car: car.position)
-
-        for car in sorted_car_list:
-            car.handle_CC_behavior(car_list)
-            car.CC_done_scheduling = True

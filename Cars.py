@@ -95,6 +95,7 @@ class Car:
         self.CC_state = None
         self.CC_slowdown_timer = 0
         self.CC_front_car = None
+        self.CC_is_stop_n_go = False
 
 
 
@@ -138,7 +139,6 @@ class Car:
         front_distance = None
         front_speed = None
         self.CC_slowdown_timer -= cfg.TIME_STEP
-
 
         leader_tuple = traci.vehicle.getLeader(self.ID)
 
@@ -195,6 +195,8 @@ class Car:
             traci.vehicle.setMaxSpeed(self.ID, slow_down_speed)
             dec_time = (self.position-(cfg.CCZ_ACC_LEN+cfg.CCZ_DEC2_LEN)) / ((my_speed+slow_down_speed)/2)
             self.CC_slowdown_timer = dec_time
+            if (dec_time < 0):
+                print(self.ID, slow_down_speed, dec_time, self.position, my_speed+slow_down_speed)
             traci.vehicle.slowDown(self.ID,slow_down_speed, dec_time)
 
 
@@ -274,6 +276,42 @@ class Car:
              traci.vehicle.setSpeed(self.ID, cfg.MAX_SPEED)
              self.CC_state = None
 
+        elif (self.CC_state == "CruiseControl_ready"):
+            reply = self.CC_get_shifts_general(car_list)
+            self.CC_get_slow_down_speed()
+            if self.CC_is_stop_n_go == True:
+                # Only stop at very closed to the intersection
+                self.CC_state = None
+            else:
+                self.CC_state = "CruiseControl_shift_start"
+
+        elif (self.CC_state == "CruiseControl_shift_start") and self.position < (cfg.CCZ_LEN-self.CC_shift):
+            self.CC_state = "CruiseControl_decelerate"
+            speed = self.CC_slow_speed
+
+            # Delta: some small error that SUMO unsync with ideal case
+            delta = (cfg.CCZ_LEN-self.CC_shift)-self.position
+            dec_time = (cfg.CCZ_ACC_LEN-delta) / ((cfg.MAX_SPEED+speed)/2)
+            traci.vehicle.setMaxSpeed(self.ID, speed)
+            traci.vehicle.slowDown(self.ID, speed, dec_time)
+            self.CC_slowdown_timer = dec_time
+
+        elif (self.CC_state == "CruiseControl_decelerate") and (self.CC_slowdown_timer <= 0):
+            traci.vehicle.setSpeed(self.ID, self.CC_slow_speed)
+            self.CC_state = "CruiseControl_slowdown_speed"
+
+        elif (self.CC_state == "CruiseControl_slowdown_speed") and (self.position <= (cfg.CCZ_ACC_LEN + self.CC_shift_end)):
+            self.CC_state = "CruiseControl_accelerate"
+            # Delta: some small error that SUMO unsync with ideal case
+            delta = (cfg.CCZ_ACC_LEN + self.CC_shift_end)-self.position
+            dec_time = (cfg.CCZ_ACC_LEN-delta) / ((cfg.MAX_SPEED+self.CC_slow_speed)/2)
+            traci.vehicle.setMaxSpeed(self.ID, cfg.MAX_SPEED)
+            traci.vehicle.slowDown(self.ID, cfg.MAX_SPEED, dec_time)
+            self.CC_slowdown_timer = dec_time
+
+        elif (self.CC_state == "CruiseControl_accelerate") and (self.CC_slowdown_timer <= 0):
+            self.CC_state == "CruiseControl_fixed_speed"
+            traci.vehicle.setSpeed(self.ID, cfg.MAX_SPEED)
 
 
 
@@ -552,8 +590,81 @@ class Car:
         else:
             return None
 
+
+    # Compute the shifts
+    def CC_get_shifts_general(self, car_list):
+        # 1.1 Determine how much to advance the car acceleration (shift_end)
+
+        if self.CC_front_car != None:
+            shifting_end = cfg.CCZ_DEC2_LEN
+            front_remain_D = (self.CC_front_car.OT+self.CC_front_car.D)-(self.CC_front_car.position/cfg.MAX_SPEED)
+            catch_up_distance = (front_remain_D - self.D)*cfg.MAX_SPEED
+            diff_distance = self.position - self.CC_front_car.position
+            if (diff_distance - catch_up_distance - self.CC_front_car.length) < (cfg.HEADWAY):
+                # The car is going to catch up the front car
+                shifting_end = self.CC_front_car.CC_shift_end + front_car.length + cfg.HEADWAY
+            self.CC_shift_end = shifting_end
+
+
+        # 1.2 Determine the upperbound of the delaying for a car to accelerate
+        cc_shift_max = cfg.CCZ_LEN-self.CC_shift_end-2*cfg.CCZ_ACC_LEN
+        if self.CC_front_car != None and self.CC_affected_by_front == True and self.CC_front_car.CC_slow_speed < cfg.MAX_SPEED:
+            # First, assume that the two cars decelerate at the same time (So the car has this shift)
+            cc_shift_max = self.CC_front_car.CC_shift - self.CC_front_pos_diff
+
+            # The space between two cars (might < 0, because might smaller than HEADWAY)
+            space_between_two = max(self.CC_front_pos_diff - self.CC_front_car.length - cfg.HEADWAY, 0)
+
+            #2 Compute catch up time and reflect to the space
+            catch_up_t = space_between_two/(cfg.MAX_SPEED-self.CC_front_car.CC_slow_speed)
+            cc_shift_max += catch_up_t*cfg.MAX_SPEED
+
+        cc_shift_max = min(cc_shift_max, cfg.CCZ_LEN-self.CC_shift_end-2*cfg.CCZ_ACC_LEN)
+
+
+        # 1.3 Determine the delay it desires. Reserving for the following cars
+        # Count cars that'll enter CCZ during the delaying
+        reserve_shift = self.length + cfg.HEADWAY
+        count_distance = self.D * cfg.MAX_SPEED + self.length + cfg.HEADWAY
+
+        count_car_list = []
+        for count_car_id, count_car in car_list.items():
+            if (count_car.lane == self.lane) and (count_car.position > self.position):
+                count_car_list.append(count_car)
+
+        count_car_list.append(self)
+        count_car_list = sorted(count_car_list, key = lambda x: x.position)
+
+        temp_D = self.D
+
+        for car_i in range(1, len(count_car_list)):
+            if (count_car_list[car_i].position < count_car_list[car_i-1].position+count_distance):
+                reserve_shift += count_car_list[car_i].length+cfg.HEADWAY
+
+                # If the car has been scheduled
+                if isinstance(count_car_list[car_i].D, float):
+                    count_distance = count_car_list[car_i].D * cfg.MAX_SPEED + count_car_list[car_i].length + cfg.HEADWAY
+                    temp_D = count_car_list[car_i].D
+                else:
+                    count_distance = temp_D * cfg.MAX_SPEED + count_car_list[car_i].length + cfg.HEADWAY
+
+            else:
+                break
+
+        reserve_shift = min(reserve_shift, cfg.CCZ_LEN-self.CC_shift_end-2*cfg.CCZ_ACC_LEN)
+
+        # 1.4 Decide the final shift
+        shifting = min(reserve_shift, cc_shift_max)
+
+        self.CC_shift = shifting
+
+        return {'shifting': shifting, 'shifting_end': self.CC_shift_end}
+
+
+
     # Compute the shifts
     def CC_get_shifts(self, car_list):
+
 
         # 1.1 Determine how much to advance the car acceleration (shift_end)
         shifting_end = cfg.CCZ_DEC2_LEN
@@ -701,22 +812,6 @@ class Car:
         shifting = min(reserve_shift, cc_shift_max)
 
 
-        #'''
-        CC_is_auto_speed_control = False
-        if (self.CC_front_car != None) and ((shifting == cc_shift_max and cc_shift_max < reserve_shift) or (shifting == min(cfg.CCZ_LEN-shifting_end-2*cfg.CCZ_ACC_LEN, cfg.CCZ_LEN-shifting_end-cfg.CCZ_ACC_LEN-self.length))):
-            #print(self.ID, "Potential contestion????", reserve_shift, cc_shift_max, self.CC_following)
-            CC_is_auto_speed_control = True
-
-        if (self.CC_front_car != None) and (self.CC_front_car.OT+self.CC_front_car.D-self.CC_front_car.position/cfg.MAX_SPEED) > (self.position-self.CC_front_car.position-self.CC_front_car.length-cfg.HEADWAY)/cfg.MAX_SPEED:
-            #The carr will catch up the front
-            CC_is_auto_speed_control = True
-        #'''
-        if (self.CC_front_car != None) and (self.CC_front_car.CC_stage == '7 enter_inter' or not self.CC_front_car.ID in car_list):
-            self.CC_front_car = None
-            CC_is_auto_speed_control = False
-            result = self.CC_get_shifts(car_list)
-            return result
-
         if front_car != None and self.CC_following == True:
             shifting = cc_shift_max
 
@@ -750,8 +845,7 @@ class Car:
 
         # Determine if there's stop and go
         if speed == 0:
-            self.CC_stop_n_go = self.D - ((2*cfg.CCZ_DEC2_LEN/(cfg.MAX_SPEED+self.speed_in_intersection)) - (cfg.CCZ_DEC2_LEN/cfg.MAX_SPEED)) - (2*(2*cfg.CCZ_ACC_LEN/(0+cfg.MAX_SPEED)) - 2*cfg.CCZ_ACC_LEN/cfg.MAX_SPEED)
-            self.CC_stop_n_go_remained = self.CC_stop_n_go
+            self.CC_is_stop_n_go = True
 
 
         self.CC_slow_speed = speed
