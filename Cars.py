@@ -199,7 +199,7 @@ class Car:
                 min_catch_up_time = (my_speed-front_speed)/cfg.MAX_ACC
                 min_distance = (my_speed-front_speed)*min_catch_up_time
 
-                if front_distance < min_distance + cfg.HEADWAY:
+                if front_distance < min_distance:
                     target_speed = max(front_speed, my_speed - cfg.MAX_ACC*cfg.TIME_STEP)
 
                     if front_speed == target_speed and front_distance <= cfg.HEADWAY:

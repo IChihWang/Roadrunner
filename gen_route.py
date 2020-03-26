@@ -28,7 +28,7 @@ def generate_routefile(arrival_rate):
         print("<routes>\n", file=routes)
 
         for i in range(5,10):
-            vType_str = '\t<vType id="car%i" accel="100.0" decel="100.0" sigma="0.0" length="%i" minGap="0.0" maxSpeed="%f" carFollowModel="CACC" color="255,255,255"/>' % (i, i, cfg.MAX_SPEED);
+            vType_str = '\t<vType id="car%i" accel="100.0" decel="100.0" sigma="0.0" length="%i" minGap="%f" maxSpeed="%f" tau="%f" carFollowModel="CACC" color="255,255,255"/>' % (i, i, cfg.HEADWAY, cfg.MAX_SPEED, cfg.TIME_STEP);
 
             print(vType_str, file=routes)
 
@@ -68,7 +68,7 @@ def generate_routefile(arrival_rate):
                         veh_str += "R"
                         idl = "R"
 
-                    veh_str += '_%i" type="car%i" route="route%s" depart="%i" departLane = "%i" />' % (vehNr, car_length, str(idx+1)+'_'+str((idx+dir_r)%4+1), i, lane_r);
+                    veh_str += '_%i" type="car%i" route="route%s" depart="%i" departLane = "%i" departSpeed="%f"/>' % (vehNr, car_length, str(idx+1)+'_'+str((idx+dir_r)%4+1), i, lane_r, cfg.MAX_SPEED);
                     idl += '_%i'% (vehNr);
                     idllist.append(idl)
                     print(veh_str, file=routes)

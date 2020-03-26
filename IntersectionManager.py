@@ -199,13 +199,14 @@ class IntersectionManager:
         # Set Max Speed in PZ
         for car_id, car in self.az_list.items():
             if car.zone == "PZ" and car.zone_state == "PZ_not_set":
-
+                traci.vehicle.setMinGap(car_id, cfg.HEADWAY)
                 self.pz_list[car_id] = car
                 del self.az_list[car_id]
 
                 # Take over the speed control from the car
                 traci.vehicle.setSpeedMode(car_id, 0)
                 car.CC_state = "Preseting_ready"
+
 
                 # Cancel the auto gap
                 traci.vehicle.setLaneChangeMode(car_id, 0)
@@ -242,7 +243,7 @@ class IntersectionManager:
             if car.zone == "AZ" and car.zone_state == "AZ_not_advised":
                 self.az_list[car_id] = car
 
-                traci.vehicle.setMinGap(car_id, 1)
+                traci.vehicle.setMinGap(car_id, cfg.HEADWAY)
                 #traci.vehicle.setLaneChangeMode(car_id, 256)
                 traci.vehicle.setLaneChangeMode(car_id, 272)
                 # 256 (collision avoidance) or 512 (collision avoidance and safety-gap enforcement)
@@ -260,6 +261,22 @@ class IntersectionManager:
                 #self.car_list[car_id].desired_lane = car.lane
 
                 car.zone_state = "AZ_advised"
+
+            elif car.zone == "AZ" and car.zone_state == "AZ_advised" and car.position <= cfg.PZ_LEN + cfg.GZ_LEN + cfg.BZ_LEN + cfg.CCZ_LEN + cfg.CCZ_ACC_LEN:
+                leader_tuple = traci.vehicle.getLeader(car.ID)
+                if leader_tuple != None:
+                    if leader_tuple[0] in self.car_list.keys():
+                        front_car_ID = leader_tuple[0]
+                        front_car = self.car_list[front_car_ID]
+                        front_distance = leader_tuple[1]
+
+                        my_speed = traci.vehicle.getSpeed(car.ID)
+                        front_speed = traci.vehicle.getSpeed(front_car.ID)
+                        min_catch_up_time = (my_speed-front_speed)/cfg.MAX_ACC
+                        min_distance = (my_speed-front_speed)*min_catch_up_time
+
+                        min_gap = max(cfg.HEADWAY, min_distance+cfg.HEADWAY)
+                        traci.vehicle.setMinGap(car_id, min_gap)
 
 
 
