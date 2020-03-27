@@ -32,3 +32,5 @@ N_TIME_STEP = 600  # number of time steps
 TIME_STEP = 0.1
 
 DISTANCE = 1.5 # 1.5 lane
+
+INTER_SIZE = 2 # 2 by 2

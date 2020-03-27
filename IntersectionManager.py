@@ -11,14 +11,14 @@ from LaneAdviser import LaneAdviser
 
 
 class IntersectionManager:
-    def __init__(self):
+    def __init__(self, my_id):
+        self.ID = my_id
         self.az_list = dict()
         self.pz_list = dict()
         self.ccz_list = dict()
 
         self.car_list = dict()   # Cars that needs to be handled
         self.cc_list = dict()    # Cars under Cruse Control in CCZ
-        self.leaving_cars = dict()   # Cars just entered the intersection (leave the CC zone)
 
         self.schedule_period_count = 0
         self.lane_advisor = LaneAdviser()
@@ -47,9 +47,14 @@ class IntersectionManager:
     def set_round_lane(self):
         for idx in range(1,5):
             for jdx in range(cfg.LANE_NUM_PER_DIRECTION):
-                idx_str = str(idx)+'_'+str(jdx)
+                idx_str = self.ID + '_' + str(idx)+'_'+str(jdx)
                 self.in_lanes.append(idx_str)
-                self.out_lanes.append('-'+idx_str)
+
+    def check_in_my_region(self, lane_id):
+        if lane_id in self.in_lanes:
+            return True
+        else:
+            return False
 
 
     def update_car(self, car_id, lane_id, simu_step):
@@ -66,6 +71,10 @@ class IntersectionManager:
                 new_car = Car(car_id, length, lane, turning)
                 new_car.Enter_T = simu_step - (traci.vehicle.getLanePosition(car_id))/cfg.MAX_SPEED
                 self.car_list[car_id] = new_car
+
+                traci.vehicle.setSpeed(car_id, cfg.MAX_SPEED)
+                traci.vehicle.setSpeedMode(car_id, 7)
+
 
             # Set the position of each cars
             position = cfg.AZ_LEN + cfg.PZ_LEN + cfg.GZ_LEN+ cfg.BZ_LEN + cfg.CCZ_LEN - traci.vehicle.getLanePosition(car_id)
@@ -111,7 +120,6 @@ class IntersectionManager:
 
                 del self.ccz_list[car_id]
 
-                self.leaving_cars[car_id] = self.car_list[car_id]
                 self.car_list[car_id].Leave_T = simu_step
                 self.total_delays += (car.Leave_T - car.Enter_T) - ((cfg.CCZ_LEN+cfg.GZ_LEN+cfg.BZ_LEN+cfg.PZ_LEN+cfg.AZ_LEN)/cfg.MAX_SPEED)
 
@@ -134,12 +142,6 @@ class IntersectionManager:
                     print("-----------------")
 
 
-        # ===== Leaving the intersection (Reset the speed to V_max) =====
-        for car_id, car in self.leaving_cars.items():
-            lane_id = traci.vehicle.getLaneID(car_id)
-            if lane_id in self.out_lanes:
-                traci.vehicle.setSpeed(car_id, cfg.MAX_SPEED)
-                del self.leaving_cars[car_id]
 
 
         # ===== Starting Cruise control

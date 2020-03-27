@@ -48,7 +48,14 @@ def run():
     """execute the TraCI control loop"""
     simu_step = 0
 
-    intersection_manager = IntersectionManager()
+    # Create a list with intersection managers
+    intersection_manager_list = []
+    for idx in range(cfg.INTER_SIZE):
+        for jdx in range(cfg.INTER_SIZE):
+            intersection_manager_id = "%3.3o"%(idx) + "_" + "%3.3o"%(jdx)
+            intersection_manager = IntersectionManager(intersection_manager_id)
+            intersection_manager_list.append(intersection_manager)
+
 
 
     try:
@@ -63,9 +70,16 @@ def run():
             # Update the position of each car
             for car_id in all_c:
                 lane_id = traci.vehicle.getLaneID(car_id)
-                intersection_manager.update_car(car_id, lane_id, simu_step)
 
-            intersection_manager.run(simu_step)
+                for intersection_manager in intersection_manager_list:
+                    if intersection_manager.check_in_my_region(lane_id):
+                        intersection_manager.update_car(car_id, lane_id, simu_step)
+                        break
+
+
+            for intersection_manager in intersection_manager_list:
+                intersection_manager.run(simu_step)
+
             simu_step += cfg.TIME_STEP
     except Exception as e:
         traceback.print_exc()
