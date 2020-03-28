@@ -125,7 +125,6 @@ class Car:
         # 2. If the car is ready for stopping
         if (self.position < (2*cfg.CCZ_ACC_LEN+cfg.CCZ_DEC2_LEN)) and ((self.CC_state == None) or (not ("Entering" in self.CC_state))):
             self.CC_state = "Entering_decelerate"
-
             # Compute the slowdown speed
             my_speed = traci.vehicle.getSpeed(self.ID)
             T = self.OT+self.D- ((cfg.CCZ_DEC2_LEN) / ((self.speed_in_intersection+cfg.MAX_SPEED)/2))

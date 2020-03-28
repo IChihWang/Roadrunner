@@ -127,12 +127,12 @@ def generate_routefile(arrival_rate):
         vehNr = 0
         for i in range(cfg.N_TIME_STEP):
             for route in route_list:
-                if random.uniform(0, 1) < dir_prob[idx]:
+                if random.uniform(0, 1) < arrival_rate:
+                    car_length = random.randrange(5,10)
+                    veh_str = "\t<vehicle id=\"car"
+                    lane_r = random.randrange(cfg.LANE_NUM_PER_DIRECTION)
 
-                    veh_str = "\t<vehicle id=car\""
-
-                    veh_str += '_%i" type="car%i" route="route%s" depart="%i" departLane = "%i" departSpeed="%f"/>' % (vehNr, car_length, route, i, lane_r, cfg.MAX_SPEED);
-                    idl += '_%i'% (vehNr);
+                    veh_str += '_%i" type="car%i" route="%s" depart="%i" departLane = "%i" departSpeed="%f"/>' % (vehNr, car_length, route, i, lane_r, cfg.MAX_SPEED);
                     print(veh_str, file=routes)
 
                     vehNr += 1

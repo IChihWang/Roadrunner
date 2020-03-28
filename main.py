@@ -50,8 +50,8 @@ def run():
 
     # Create a list with intersection managers
     intersection_manager_list = []
-    for idx in range(cfg.INTER_SIZE):
-        for jdx in range(cfg.INTER_SIZE):
+    for idx in range(1, cfg.INTER_SIZE+1):
+        for jdx in range(1, cfg.INTER_SIZE+1):
             intersection_manager_id = "%3.3o"%(idx) + "_" + "%3.3o"%(jdx)
             intersection_manager = IntersectionManager(intersection_manager_id)
             intersection_manager_list.append(intersection_manager)

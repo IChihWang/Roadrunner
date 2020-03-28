@@ -3,6 +3,7 @@ import sys
 import config as cfg
 import traci
 import threading
+import random
 
 
 from Cars import Car
@@ -59,21 +60,64 @@ class IntersectionManager:
 
     def update_car(self, car_id, lane_id, simu_step):
         if lane_id in self.in_lanes:
-            lane = ((4-int(lane_id[0]))*cfg.LANE_NUM_PER_DIRECTION) + (cfg.LANE_NUM_PER_DIRECTION-int(lane_id[2])-1)
+            lane = ((4-int(lane_id[8]))*cfg.LANE_NUM_PER_DIRECTION) + (cfg.LANE_NUM_PER_DIRECTION-int(lane_id[10])-1)
 
             # Add car if the car is not in the list yet
             if car_id not in self.car_list:
                 # Gather the information of the new car
                 #traci.vehicle.setSpeed(car_id, cfg.MAX_SPEED)
                 length = traci.vehicle.getLength(car_id)
-                turning = car_id[0]
+                turning = "R"
 
                 new_car = Car(car_id, length, lane, turning)
                 new_car.Enter_T = simu_step - (traci.vehicle.getLanePosition(car_id))/cfg.MAX_SPEED
                 self.car_list[car_id] = new_car
 
                 traci.vehicle.setSpeed(car_id, cfg.MAX_SPEED)
-                traci.vehicle.setSpeedMode(car_id, 7)
+                #traci.vehicle.setSpeedMode(car_id, 7)
+
+
+
+                '''
+                Debug for now:
+                    Randomly assign the directions
+                '''
+                new_car.turning = random.choice(['R', 'S', 'L'])
+
+                intersection_dir = int(lane_id[8])
+                x_idx = int(self.ID[0:3])
+                y_idx = int(self.ID[4:7])
+
+                target_dir = None
+
+                if new_car.turning == 'R':
+                    target_dir = ((intersection_dir-1)+1)%4+1
+                elif new_car.turning == 'S':
+                    target_dir = intersection_dir
+                elif new_car.turning == 'L':
+                    target_dir = ((intersection_dir-1)-1)%4+1
+
+                if target_dir == 1:
+                    x_idx = x_idx + 1
+                    y_idx = y_idx
+                elif target_dir == 2:
+                    x_idx = x_idx
+                    y_idx = y_idx - 1
+                elif target_dir == 3:
+                    x_idx = x_idx - 1
+                    y_idx = y_idx
+                elif target_dir == 4:
+                    x_idx = x_idx
+                    y_idx = y_idx + 1
+
+                intersection_manager_id = "%3.3o"%(x_idx) + "_" + "%3.3o"%(y_idx)
+
+                target_edge = intersection_manager_id + "_" + str(target_dir)
+                traci.vehicle.changeTarget(car_id, target_edge)
+                traci.vehicle.setColor(car_id, (255,255,255))
+
+
+
 
 
             # Set the position of each cars
@@ -81,7 +125,8 @@ class IntersectionManager:
             self.car_list[car_id].setPosition(position)
 
 
-            if self.car_list[car_id].zone == None:
+            if (self.car_list[car_id].zone == None) and (position <= cfg.AZ_LEN + cfg.PZ_LEN + cfg.GZ_LEN + cfg.BZ_LEN + cfg.CCZ_LEN - self.car_list[car_id].length):
+                # The minus part is the to prevent cars from changing too early (while in the intersection)
                 self.car_list[car_id].zone = "AZ"
                 self.car_list[car_id].zone_state = "AZ_not_advised"
 
@@ -151,8 +196,8 @@ class IntersectionManager:
                 self.ccz_list[car_id] = car
                 del self.pz_list[car_id]
 
-                #if (car.CC_state == None):
-                    #car.CC_state = "CruiseControl_ready"
+                if (car.CC_state == None):
+                    car.CC_state = "CruiseControl_ready"
 
 
 
@@ -214,11 +259,11 @@ class IntersectionManager:
                 traci.vehicle.setLaneChangeMode(car_id, 0)
 
                 lane_id = traci.vehicle.getLaneID(car_id)
-                lane = ((4-int(lane_id[0]))*cfg.LANE_NUM_PER_DIRECTION) + (cfg.LANE_NUM_PER_DIRECTION-int(lane_id[2])-1)
+                lane = ((4-int(lane_id[8]))*cfg.LANE_NUM_PER_DIRECTION) + (cfg.LANE_NUM_PER_DIRECTION-int(lane_id[10])-1)
                 self.car_list[car_id].lane = lane
 
                 # Stay on its lane
-                traci.vehicle.changeLane(car_id, int(lane_id[2]), 10.0)
+                traci.vehicle.changeLane(car_id, int(lane_id[10]), 10.0)
 
 
                 car.zone_state = "PZ_set"
