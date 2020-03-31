@@ -73,12 +73,6 @@ class IntersectionManager:
                 new_car.is_given_route = False
                 self.car_list[car_id] = new_car
 
-                traci.vehicle.setSpeed(car_id, cfg.MAX_SPEED)
-                #traci.vehicle.setSpeedMode(car_id, 7)
-
-                traci.vehicle.setLaneChangeMode(car_id, 1365)
-
-
 
 
 
