@@ -99,6 +99,7 @@ class Car:
 
         leader_tuple = traci.vehicle.getLeader(self.ID)
 
+
         if leader_tuple != None:
             if leader_tuple[0] in car_list.keys():
                 front_car_ID = leader_tuple[0]

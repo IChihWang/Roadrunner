@@ -114,6 +114,7 @@ class IntersectionManager:
 
                 target_edge = intersection_manager_id + "_" + str(target_dir)
                 traci.vehicle.changeTarget(car_id, target_edge)
+                traci.vehicle.setMaxSpeed(car_id, cfg.MAX_SPEED)
                 traci.vehicle.setColor(car_id, (255,255,255))
 
 
@@ -173,7 +174,7 @@ class IntersectionManager:
                 self.car_num += 1
 
                 self.car_list.pop(car_id)
-                car.zone == "Intersection"
+                car.zone = "Intersection"
 
                 if car.D+car.OT <= -0.4 or car.D+car.OT >= 0.4:
                     print("DEBUG: Car didn't arrive at the intersection at right time.")
@@ -274,9 +275,7 @@ class IntersectionManager:
 
         # Start to let cars control itself once it enters the CCZ
         # Each car perform their own Cruise Control behavior
-        ccontrol_list = self.pz_list.copy()
-        ccontrol_list.update(self.ccz_list)
-        sorted_ccontrol_list = sorted(ccontrol_list.items(), key=lambda x: x[1].position)
+        sorted_ccontrol_list = sorted(self.car_list.items(), key=lambda x: x[1].position)
         # SUPER IMPORTANT: sorted to ensure the following car speed
         for car_id, car in sorted_ccontrol_list:
             # Cars perform their own CC
