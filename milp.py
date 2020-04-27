@@ -349,19 +349,6 @@ def IcaccPlus(old_cars, new_cars):
     if len(new_cars) > 0:
         avg_delay = avg_delay/len(new_cars)
 
-    #print ("avg_delay ", ans/len(new_cars))
-
-
-    #print("=============")
-
-
-    '''
-    for c_idx in range(len(all_cars)):
-        for c_jdx in range(len(all_cars)):
-            if (all_cars[c_idx]['ID'] == 'L_12') and (all_cars[c_jdx]['ID'] == 'R_13'):
-                print(all_cars[c_jdx])
-                print(all_cars[c_idx])
-    '''
 
 
     return avg_delay

@@ -146,199 +146,55 @@ class IntersectionManager:
                 self.car_list[car_id].zone = "CCZ"
 
 
-    def run(self, simu_step):
+    def run(self, cars, index_of_target_car):
 
-        # ===== Update the time OT =====
-        for car_key in self.car_list:
-            # Update when the car is scheduled
-            if self.car_list[car_key].OT != None:
-                self.car_list[car_key].OT -= cfg.TIME_STEP
+        # Cars: list of cars around the intersection
+        # index_of_target_car: index of the target car in the list
 
-            self.total_fuel_consumption += traci.vehicle.getFuelConsumption(car_key)*cfg.TIME_STEP
-            self.fuel_consumption_count += 1
+        # The result is the candidate for turnings
+        turning_results = dict()
 
+        # Classify the cars for scheduler
+        sched_car = []      # Scheduled
+        n_sched_car = []    # Not scheduled
 
-        # ===== Entering the intersection (Record the cars) =====
-        for car_id, car in self.car_list.items():
-            lane_id = traci.vehicle.getLaneID(car_id)
-            if lane_id not in self.in_lanes:
-                traci.vehicle.setSpeed(car_id, car.speed_in_intersection)
+        for car_idx in range(len(cars)):
+            car = cars[car_idx]
+            if car.AT == None:
+                car.OT = None       # Format the data for the scheduler
+                car.D = None
+                n_sched_car.append(car)
 
-                del self.ccz_list[car_id]
-
-                self.car_list[car_id].Leave_T = simu_step
-                self.total_delays += (car.Leave_T - car.Enter_T) - ((cfg.CCZ_LEN+cfg.GZ_LEN+cfg.BZ_LEN+cfg.PZ_LEN+cfg.AZ_LEN)/cfg.MAX_SPEED)
-
-                # Measurement
-                self.total_delays_by_sche += car.D
-                self.car_num += 1
-
-                self.car_list.pop(car_id)
-                car.zone = "Intersection"
-
-                if car.D+car.OT <= -0.4 or car.D+car.OT >= 0.4:
-                    print("DEBUG: Car didn't arrive at the intersection at right time.")
-
-                    print("ID", car.ID)
-                    print("OT+D", car.D+car.OT)
-                    print("lane", car.lane)
-                    print("D", car.D)
-                    print("OT", car.OT)
-                    print("=======")
-                    print("-----------------")
-
-
-
-
-        # ===== Starting Cruise control
-        for car_id, car in self.pz_list.items():
-            if car.position <= cfg.CCZ_LEN and isinstance(car.D, float):
-
-                self.ccz_list[car_id] = car
-                del self.pz_list[car_id]
-
-                if (car.CC_state == None):
-                    car.CC_state = "CruiseControl_ready"
-
-
-
-
-        ##############################################
-        # Grouping the cars and schedule
-        # Put here due to the thread handling
-        self.schedule_period_count += cfg.TIME_STEP
-        if self.schedule_period_count > cfg.GZ_LEN/cfg.MAX_SPEED -1:
-            if self.scheduling_thread == None or (not self.scheduling_thread.isAlive()):
-
-                # Classify the cars for scheduler
-                sched_car = []
-                n_sched_car = []
-                advised_n_sched_car = []
-                for car_id, car in self.car_list.items():
-                    if car.zone == "GZ" or car.zone == "BZ" or car.zone == "CCZ":
-                        if car.zone_state == "not_scheduled":
-                            n_sched_car.append(car)
-                        else:
-                            sched_car.append(car)
-                    elif car.zone == "PZ" or car.zone == "AZ":
-                        advised_n_sched_car.append(car)
-
-
-
-                for c_idx in range(len(n_sched_car)):
-                    traci.vehicle.setColor(n_sched_car[c_idx].ID, (100,250,92))
-                    n_sched_car[c_idx].D = None
-
-                self.scheduling_thread = threading.Thread(target = Scheduling, args = (self.lane_advisor, sched_car, n_sched_car, advised_n_sched_car, self.cc_list, self.car_list))
-                self.scheduling_thread.start()
-
-
-                self.schedule_period_count = 0
-
+                # Cars given lane advice but not scheduled
+                if car_idx != index_of_target_car:
+                    advised_n_sched_car.append(car)
             else:
-                print("Warning: the update period does not sync with the length of GZ")
+                car.OT = 0          # Format the data for the scheduler
+                car.D = car.AT
+                sched_car.append(car)
 
 
+        # Update the table for the lane advising
+        lane_advisor.updateTableFromCars(sched_car, advised_n_sched_car)
+
+        for turning_str in ['R', 'S', 'L']:
+
+            # Assign the turning to the car
+            car[index_of_target_car].turning = turning_str
+
+            # Line advise
+            advised_lane = self.lane_advisor.adviseLane(self.car_list[car_id])
+
+            # Reset the delays
+            for c_idx in range(len(n_sched_car)):
+                n_sched_car[c_idx].D = None
+
+            # Do the scheduling
+            IcaccPlus(sched_car, n_sched_car)
 
 
+            for car_idx in range(len(cars)):
+                if car.AT == None:
+                    
 
-
-        ################################################
-        # Set Max Speed in PZ
-        for car_id, car in self.az_list.items():
-            if car.zone == "PZ" and car.zone_state == "PZ_not_set":
-                traci.vehicle.setMinGap(car_id, cfg.HEADWAY)
-                self.pz_list[car_id] = car
-                del self.az_list[car_id]
-
-                # Take over the speed control from the car
-                traci.vehicle.setSpeedMode(car_id, 0)
-                car.CC_state = "Preseting_ready"
-
-
-                # Cancel the auto gap
-                traci.vehicle.setLaneChangeMode(car_id, 0)
-
-                lane_id = traci.vehicle.getLaneID(car_id)
-                lane = ((4-int(lane_id[8]))*cfg.LANE_NUM_PER_DIRECTION) + (cfg.LANE_NUM_PER_DIRECTION-int(lane_id[10])-1)
-                self.car_list[car_id].lane = lane
-
-                # Stay on its lane
-                traci.vehicle.changeLane(car_id, int(lane_id[10]), 10.0)
-
-
-                car.zone_state = "PZ_set"
-
-
-        ##########################################
-        # Cruse Control
-
-        # Start to let cars control itself once it enters the CCZ
-        # Each car perform their own Cruise Control behavior
-        sorted_ccontrol_list = sorted(self.car_list.items(), key=lambda x: x[1].position)
-        # SUPER IMPORTANT: sorted to ensure the following car speed
-        for car_id, car in sorted_ccontrol_list:
-            # Cars perform their own CC
-            car.handle_CC_behavior(self.car_list)
-
-
-
-        ################################################
-        # Change lane in AZ
-        for car_id, car in self.car_list.items():
-            if car.zone == "AZ" and car.zone_state == "AZ_not_advised":
-                self.az_list[car_id] = car
-
-                traci.vehicle.setMinGap(car_id, cfg.HEADWAY)
-                #traci.vehicle.setLaneChangeMode(car_id, 256)
-                traci.vehicle.setLaneChangeMode(car_id, 272)
-                # 256 (collision avoidance) or 512 (collision avoidance and safety-gap enforcement)
-
-                time_in_AZ = cfg.AZ_LEN/cfg.MAX_SPEED *3
-
-
-                #advised_lane = self.lane_advisor.adviseLaneShortestTrajectory(car)
-                advised_lane = self.lane_advisor.adviseLane(self.car_list[car_id])
-                #advised_lane = self.lane_advisor.adviseLane_v2(self.car_list[car_id])
-                #advised_lane = random.randrange(0, cfg.LANE_NUM_PER_DIRECTION)
-
-                traci.vehicle.changeLane(car_id, advised_lane, time_in_AZ)
-                car.desired_lane = (cfg.LANE_NUM_PER_DIRECTION-advised_lane-1)+(car.lane//cfg.LANE_NUM_PER_DIRECTION)*cfg.LANE_NUM_PER_DIRECTION
-                #self.car_list[car_id].desired_lane = car.lane
-
-                car.zone_state = "AZ_advised"
-
-            elif car.zone == "AZ" and car.zone_state == "AZ_advised" and car.position <= cfg.PZ_LEN + cfg.GZ_LEN + cfg.BZ_LEN + cfg.CCZ_LEN + cfg.CCZ_ACC_LEN:
-                leader_tuple = traci.vehicle.getLeader(car.ID)
-                if leader_tuple != None:
-                    if leader_tuple[0] in self.car_list.keys():
-                        front_car_ID = leader_tuple[0]
-                        front_car = self.car_list[front_car_ID]
-                        front_distance = leader_tuple[1]
-
-                        my_speed = traci.vehicle.getSpeed(car.ID)
-                        front_speed = traci.vehicle.getSpeed(front_car.ID)
-                        min_catch_up_time = (my_speed-front_speed)/cfg.MAX_ACC
-                        min_distance = (my_speed-front_speed)*min_catch_up_time
-
-                        min_gap = max(cfg.HEADWAY, min_distance+cfg.HEADWAY)
-                        traci.vehicle.setMinGap(car_id, min_gap)
-
-
-
-
-##########################
-# Scheduling thread that handles scheduling and update the table for lane advising
-def Scheduling(lane_advisor, sched_car, n_sched_car, advised_n_sched_car, cc_list, car_list):
-    if int(sys.argv[3]) == 0:
-        IcaccPlus(sched_car, n_sched_car)
-    elif int(sys.argv[3]) == 1:
-        Icacc(sched_car, n_sched_car)
-    elif int(sys.argv[3]) == 2:
-        Fcfs(sched_car, n_sched_car)
-
-
-    lane_advisor.updateTableFromCars(n_sched_car, advised_n_sched_car)
-
-    for car in n_sched_car:
-        car.zone_state = "scheduled"
+            turning_results[turning_str] =

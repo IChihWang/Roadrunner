@@ -85,18 +85,15 @@ class LaneAdviser:
             for idx in range(4*cfg.LANE_NUM_PER_DIRECTION):
                 cars_on_lanes[idx] = []
             for car in n_sched_car:
-                cars_on_lanes[car.desired_lane].append(car)
+                cars_on_lanes[car.lane].append(car)
             for idx in range(4*cfg.LANE_NUM_PER_DIRECTION):
-                sorted_car_list = sorted(cars_on_lanes[idx], key=lambda car: car.position, reverse=True)
+                sorted_car_list = sorted(cars_on_lanes[idx], key=lambda car: car.AT, reverse=True)
                 if len(sorted_car_list) > 0:
-                    latest_delay_list[idx] = sorted_car_list[0].D
+                    latest_delay_list[idx] = sorted_car_list[0].AT
                 else:
                     latest_delay_list[idx] = 0
 
-            if (car.CC_state != None) and  ("Platoon" in car.CC_state):
-                self.updateTable(car.lane, car.turning, car.position/cfg.MAX_SPEED+latest_delay_list[idx], self.timeMatrix)
-            else:
-                self.updateTable(car.lane, car.turning, car.position/cfg.MAX_SPEED, self.timeMatrix)
+            self.updateTable(car.lane, car.turning, max(car.position/cfg.MAX_SPEED, latest_delay_list[idx]), self.timeMatrix)
 
 
         # Count car number on each lane of advised but not scheduled
