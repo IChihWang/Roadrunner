@@ -7,6 +7,6 @@ do
   for i in $(seq 0.1 0.1 1.0)
   do
       echo $j $i
-      python new_runner.py $i $j
+      python main.py $i $j
   done
 done 
