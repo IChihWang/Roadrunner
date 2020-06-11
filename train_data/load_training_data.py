@@ -25,8 +25,8 @@ if __name__ == "__main__":
             x.append(car_tuple)
             
         for car_tuple in n_sched_car:
-            x.append((car_tuple[0],car_tuple[1]))
-            y.append((car_tuple[2],car_tuple[3]))
+            x.append((car_tuple[0],car_tuple[1],car_tuple[2],car_tuple[3]))
+            y.append((car_tuple[4],car_tuple[5]))
         
         x_batch.append(x)
         y_batch.append(y)

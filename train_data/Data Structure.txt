@@ -5,13 +5,13 @@ List of each scheduling results
     Dictionary (each scheduling)
     {
         "sched_car":
-            sched_car_list: list of 200 tuples ( _ , _ )
-                (AT, lane)
+            sched_car_list: list of 200 tuples ( _ , _ , _ , _ )
+                (AT, lane, turning, length)
             
             
         "n_sched_car":
-            n_sched_car_list: list of 50 tuples ( _ , _ , _ , _ )
-                (position, original lane, changed lane, AT)
+            n_sched_car_list: list of 50 tuples ( _ , _ , _ , _ , _ , _ )
+                (position, original lane, turning, length, changed lane, AT)
     }
 ]
 
@@ -23,12 +23,12 @@ List of each scheduling results
 training data
 
 one traning data (x, y)
-x:  250 x 2: 2D array
+x:  250 x 4: 2D array
 
     [
-        ( _ , _ )           # First 200: (AT, lane) of scheduled cars
-        ( _ , _ )
-        ( _ , _ )           # Last 50: (position, original lane) of un-scheduled cars
+        ( _ , _ , _ , _ )           # First 200: (AT, lane, turning, length) of scheduled cars
+        ( _ , _ , _ , _ )
+        ( _ , _ , _ , _ )           # Last 50: (position, original lane, turning, length) of un-scheduled cars
         ...
     ]
     
