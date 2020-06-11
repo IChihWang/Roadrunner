@@ -295,12 +295,12 @@ def Scheduling(lane_advisor, sched_car, n_sched_car, advised_n_sched_car, cc_lis
     
     
     if len(n_sched_car) > 0:
-        sched_car_list = [(0,0)]*100     # (AT, lane)
+        sched_car_list = [(0,0)]*200     # (AT, lane)
         for car_idx in range(len(sched_car)):
             car = sched_car[car_idx]
             sched_car_list[car_idx] = (car.OT + car.D, car.lane)
         
-        n_sched_car_list = [(0,0,0,0)]*30 
+        n_sched_car_list = [(0,0,0,0)]*50 
         for car_idx in range(len(n_sched_car)):
             car = n_sched_car[car_idx]
             n_sched_car_list[car_idx] = (car.position, car.original_lane, car.lane, car.OT + car.D)

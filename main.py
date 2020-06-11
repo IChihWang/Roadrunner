@@ -56,9 +56,9 @@ def run():
         while traci.simulation.getMinExpectedNumber() > 0:
 
             '''
-            if (simu_step*10)//1/10.0 == 3600:
+            if (simu_step*10)//1/10.0 == 200:
                 break
-            '''
+            #'''
 
 
             traci.simulationStep()
