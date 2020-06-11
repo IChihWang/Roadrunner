@@ -1,0 +1,38 @@
+.json
+
+List of each scheduling results
+[
+    Dictionary (each scheduling)
+    {
+        "sched_car":
+            sched_car_list: list of 100 tuples ( _ , _ )
+                (AT, lane)
+            
+            
+        "n_sched_car":
+            n_sched_car_list: list of 30 tuples ( _ , _ , _ , _ )
+                (position, original lane, changed lane, AT)
+    }
+]
+
+
+
+
+
+
+training data
+
+one traning data (x, y)
+x:  130 x 2: 2D array
+
+    [
+        ( _ , _ )           # First 100: (AT, lane) of scheduled cars
+        ( _ , _ )
+        ( _ , _ )           # Last 30: (position, original lane) of un-scheduled cars
+        ...
+    ]
+    
+y:  30 x 2: 2D array
+    [
+        ( _ , _ )           # (changed lane, AT)
+    ]

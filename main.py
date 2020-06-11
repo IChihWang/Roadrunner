@@ -27,6 +27,7 @@ import traci
 import traceback
 
 import config as cfg
+import json
 
 from gen_route import generate_routefile
 
@@ -48,21 +49,16 @@ def run():
     """execute the TraCI control loop"""
     simu_step = 0
 
-    # Create a list with intersection managers
-    intersection_manager_list = []
-    for idx in range(1, cfg.INTER_SIZE+1):
-        for jdx in range(1, cfg.INTER_SIZE+1):
-            intersection_manager_id = "%3.3o"%(idx) + "_" + "%3.3o"%(jdx)
-            intersection_manager = IntersectionManager(intersection_manager_id)
-            intersection_manager_list.append(intersection_manager)
-
+    intersection_manager = IntersectionManager()
 
 
     try:
         while traci.simulation.getMinExpectedNumber() > 0:
 
-            if (simu_step*10)//1/10.0 == 500:
+            '''
+            if (simu_step*10)//1/10.0 == 3600:
                 break
+            '''
 
 
             traci.simulationStep()
@@ -70,31 +66,30 @@ def run():
             # Update the position of each car
             for car_id in all_c:
                 lane_id = traci.vehicle.getLaneID(car_id)
+                intersection_manager.update_car(car_id, lane_id, simu_step)
 
-                for intersection_manager in intersection_manager_list:
-                    if intersection_manager.check_in_my_region(lane_id):
-                        intersection_manager.update_car(car_id, lane_id, simu_step)
-                        break
-
-
-            for intersection_manager in intersection_manager_list:
-                intersection_manager.run(simu_step)
-
+            intersection_manager.run(simu_step)
             simu_step += cfg.TIME_STEP
+            
+        
+        
     except Exception as e:
         traceback.print_exc()
+     
+    with open('train_data/data_'+sys.argv[1]+'_'+sys.argv[2]+'.json', 'w') as json_file:
+        json.dump(cfg.to_write_list, json_file)
 
 
     #debug_t = threading.Thread(target=debug_ring)
     #debug_t.start()
-    print(sys.argv[1], int(sys.argv[2]), int(sys.argv[3]))
+    #print(sys.argv[1], int(sys.argv[2]))
 
     # Print out the measurements
     #print("Average total delay: ", total_delays/car_num)
     #print("Average delay by scheduling: ", total_delays_by_sche/car_num)
-    print(intersection_manager.total_delays/intersection_manager.car_num, intersection_manager.total_delays_by_sche/intersection_manager.car_num, intersection_manager.car_num)
+    #print(intersection_manager.total_delays/intersection_manager.car_num, intersection_manager.total_delays_by_sche/intersection_manager.car_num, intersection_manager.car_num)
 
-    print("avg_fuel = ",intersection_manager.total_fuel_consumption/intersection_manager.fuel_consumption_count)
+    #print("avg_fuel = ",intersection_manager.total_fuel_consumption/intersection_manager.fuel_consumption_count)
 
     sys.stdout.flush()
 
@@ -117,19 +112,18 @@ def get_options():
 ###########################
 # Main function
 if __name__ == "__main__":
-    print("Usage: python code.py <arrival_rate (0~1.0)> <seed> <schedular>")
+    print("Usage: python code.py <arrival_rate (0~1.0)> <seed>")
 
     seed = int(sys.argv[2])
     random.seed(seed)  # make tests reproducible
     numpy.random.seed(seed)
 
     options = get_options()
+    
+    cfg.to_write_list = []
 
     # this script has been called from the command line. It will start sumo as a server, then connect and run
-    if options.nogui:
-        sumoBinary = checkBinary('sumo')
-    else:
-        sumoBinary = checkBinary('sumo-gui')
+    sumoBinary = checkBinary('sumo')
 
     # 0. Generate the intersection information files
     os.system("bash gen_intersection/gen_data.sh " + str(cfg.LANE_NUM_PER_DIRECTION))

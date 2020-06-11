@@ -17,7 +17,7 @@ LANE_WIDTH = 3.2
 
 LARGE_NUM = 1e4
 
-HEADWAY = 5 # 3 meter
+HEADWAY = 3 # 3 meter
 CCZ_ACC_LEN = 5.0
 CCZ_DEC2_LEN = 2.5
 MAX_ACC = (MAX_SPEED*MAX_SPEED)/(2*CCZ_ACC_LEN)
@@ -28,9 +28,9 @@ CAR_MAX_LEN = 15
 CAR_MIN_LEN = 5
 CAR_AVG_LEN = (CAR_MAX_LEN+CAR_MIN_LEN)/2
 
-N_TIME_STEP = 600  # number of time steps
+N_TIME_STEP = 3600  # number of time steps
 TIME_STEP = 0.1
 
 DISTANCE = 1.5 # 1.5 lane
 
-INTER_SIZE = 2 # 2 by 2
+global to_write_list

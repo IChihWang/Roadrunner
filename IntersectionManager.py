@@ -3,23 +3,22 @@ import sys
 import config as cfg
 import traci
 import threading
-import random
 
 
 from Cars import Car
 from milp import Icacc, IcaccPlus, Fcfs, FixedSignal
 from LaneAdviser import LaneAdviser
-
+import copy
 
 class IntersectionManager:
-    def __init__(self, my_id):
-        self.ID = my_id
+    def __init__(self):
         self.az_list = dict()
         self.pz_list = dict()
         self.ccz_list = dict()
 
         self.car_list = dict()   # Cars that needs to be handled
         self.cc_list = dict()    # Cars under Cruse Control in CCZ
+        self.leaving_cars = dict()   # Cars just entered the intersection (leave the CC zone)
 
         self.schedule_period_count = 0
         self.lane_advisor = LaneAdviser()
@@ -48,86 +47,32 @@ class IntersectionManager:
     def set_round_lane(self):
         for idx in range(1,5):
             for jdx in range(cfg.LANE_NUM_PER_DIRECTION):
-                idx_str = self.ID + '_' + str(idx)+'_'+str(jdx)
+                idx_str = str(idx)+'_'+str(jdx)
                 self.in_lanes.append(idx_str)
-
-    def check_in_my_region(self, lane_id):
-        if lane_id in self.in_lanes:
-            return True
-        else:
-            return False
+                self.out_lanes.append('-'+idx_str)
 
 
     def update_car(self, car_id, lane_id, simu_step):
         if lane_id in self.in_lanes:
-            lane = ((4-int(lane_id[8]))*cfg.LANE_NUM_PER_DIRECTION) + (cfg.LANE_NUM_PER_DIRECTION-int(lane_id[10])-1)
+            lane = ((4-int(lane_id[0]))*cfg.LANE_NUM_PER_DIRECTION) + (cfg.LANE_NUM_PER_DIRECTION-int(lane_id[2])-1)
 
             # Add car if the car is not in the list yet
             if car_id not in self.car_list:
                 # Gather the information of the new car
                 #traci.vehicle.setSpeed(car_id, cfg.MAX_SPEED)
                 length = traci.vehicle.getLength(car_id)
-                turning = "R"
+                turning = car_id[0]
 
                 new_car = Car(car_id, length, lane, turning)
                 new_car.Enter_T = simu_step - (traci.vehicle.getLanePosition(car_id))/cfg.MAX_SPEED
                 self.car_list[car_id] = new_car
-
-                traci.vehicle.setSpeed(car_id, cfg.MAX_SPEED)
-                #traci.vehicle.setSpeedMode(car_id, 7)
-
-
-
-                '''
-                Debug for now:
-                    Randomly assign the directions
-                '''
-                new_car.turning = random.choice(['R', 'S', 'L'])
-
-                intersection_dir = int(lane_id[8])
-                x_idx = int(self.ID[0:3])
-                y_idx = int(self.ID[4:7])
-
-                target_dir = None
-
-                if new_car.turning == 'R':
-                    target_dir = ((intersection_dir-1)+1)%4+1
-                elif new_car.turning == 'S':
-                    target_dir = intersection_dir
-                elif new_car.turning == 'L':
-                    target_dir = ((intersection_dir-1)-1)%4+1
-
-                if target_dir == 1:
-                    x_idx = x_idx + 1
-                    y_idx = y_idx
-                elif target_dir == 2:
-                    x_idx = x_idx
-                    y_idx = y_idx - 1
-                elif target_dir == 3:
-                    x_idx = x_idx - 1
-                    y_idx = y_idx
-                elif target_dir == 4:
-                    x_idx = x_idx
-                    y_idx = y_idx + 1
-
-                intersection_manager_id = "%3.3o"%(x_idx) + "_" + "%3.3o"%(y_idx)
-
-                target_edge = intersection_manager_id + "_" + str(target_dir)
-                traci.vehicle.changeTarget(car_id, target_edge)
-                traci.vehicle.setMaxSpeed(car_id, cfg.MAX_SPEED)
-                traci.vehicle.setColor(car_id, (255,255,255))
-
-
-
-
 
             # Set the position of each cars
             position = cfg.AZ_LEN + cfg.PZ_LEN + cfg.GZ_LEN+ cfg.BZ_LEN + cfg.CCZ_LEN - traci.vehicle.getLanePosition(car_id)
             self.car_list[car_id].setPosition(position)
 
 
-            if (self.car_list[car_id].zone == None) and (position <= cfg.AZ_LEN + cfg.PZ_LEN + cfg.GZ_LEN + cfg.BZ_LEN + cfg.CCZ_LEN - self.car_list[car_id].length):
-                # The minus part is the to prevent cars from changing too early (while in the intersection)
+            if self.car_list[car_id].zone == None:
                 self.car_list[car_id].zone = "AZ"
                 self.car_list[car_id].zone_state = "AZ_not_advised"
 
@@ -166,6 +111,7 @@ class IntersectionManager:
 
                 del self.ccz_list[car_id]
 
+                self.leaving_cars[car_id] = self.car_list[car_id]
                 self.car_list[car_id].Leave_T = simu_step
                 self.total_delays += (car.Leave_T - car.Enter_T) - ((cfg.CCZ_LEN+cfg.GZ_LEN+cfg.BZ_LEN+cfg.PZ_LEN+cfg.AZ_LEN)/cfg.MAX_SPEED)
 
@@ -174,7 +120,7 @@ class IntersectionManager:
                 self.car_num += 1
 
                 self.car_list.pop(car_id)
-                car.zone = "Intersection"
+                car.zone == "Intersection"
 
                 if car.D+car.OT <= -0.4 or car.D+car.OT >= 0.4:
                     print("DEBUG: Car didn't arrive at the intersection at right time.")
@@ -188,6 +134,12 @@ class IntersectionManager:
                     print("-----------------")
 
 
+        # ===== Leaving the intersection (Reset the speed to V_max) =====
+        for car_id, car in self.leaving_cars.items():
+            lane_id = traci.vehicle.getLaneID(car_id)
+            if lane_id in self.out_lanes:
+                traci.vehicle.setSpeed(car_id, cfg.MAX_SPEED)
+                del self.leaving_cars[car_id]
 
 
         # ===== Starting Cruise control
@@ -197,8 +149,8 @@ class IntersectionManager:
                 self.ccz_list[car_id] = car
                 del self.pz_list[car_id]
 
-                if (car.CC_state == None):
-                    car.CC_state = "CruiseControl_ready"
+                #if (car.CC_state == None):
+                    #car.CC_state = "CruiseControl_ready"
 
 
 
@@ -260,11 +212,11 @@ class IntersectionManager:
                 traci.vehicle.setLaneChangeMode(car_id, 0)
 
                 lane_id = traci.vehicle.getLaneID(car_id)
-                lane = ((4-int(lane_id[8]))*cfg.LANE_NUM_PER_DIRECTION) + (cfg.LANE_NUM_PER_DIRECTION-int(lane_id[10])-1)
+                lane = ((4-int(lane_id[0]))*cfg.LANE_NUM_PER_DIRECTION) + (cfg.LANE_NUM_PER_DIRECTION-int(lane_id[2])-1)
                 self.car_list[car_id].lane = lane
 
                 # Stay on its lane
-                traci.vehicle.changeLane(car_id, int(lane_id[10]), 10.0)
+                traci.vehicle.changeLane(car_id, int(lane_id[2]), 10.0)
 
 
                 car.zone_state = "PZ_set"
@@ -275,7 +227,9 @@ class IntersectionManager:
 
         # Start to let cars control itself once it enters the CCZ
         # Each car perform their own Cruise Control behavior
-        sorted_ccontrol_list = sorted(self.car_list.items(), key=lambda x: x[1].position)
+        ccontrol_list = self.pz_list.copy()
+        ccontrol_list.update(self.ccz_list)
+        sorted_ccontrol_list = sorted(ccontrol_list.items(), key=lambda x: x[1].position)
         # SUPER IMPORTANT: sorted to ensure the following car speed
         for car_id, car in sorted_ccontrol_list:
             # Cars perform their own CC
@@ -330,15 +284,26 @@ class IntersectionManager:
 ##########################
 # Scheduling thread that handles scheduling and update the table for lane advising
 def Scheduling(lane_advisor, sched_car, n_sched_car, advised_n_sched_car, cc_list, car_list):
-    if int(sys.argv[3]) == 0:
-        IcaccPlus(sched_car, n_sched_car)
-    elif int(sys.argv[3]) == 1:
-        Icacc(sched_car, n_sched_car)
-    elif int(sys.argv[3]) == 2:
-        Fcfs(sched_car, n_sched_car)
+
+    IcaccPlus(sched_car, n_sched_car)
 
 
     lane_advisor.updateTableFromCars(n_sched_car, advised_n_sched_car)
 
     for car in n_sched_car:
         car.zone_state = "scheduled"
+    
+    
+    if len(n_sched_car) > 0:
+        sched_car_list = [(0,0)]*100     # (AT, lane)
+        for car_idx in range(len(sched_car)):
+            car = sched_car[car_idx]
+            sched_car_list[car_idx] = (car.OT + car.D, car.lane)
+        
+        n_sched_car_list = [(0,0,0,0)]*30 
+        for car_idx in range(len(n_sched_car)):
+            car = n_sched_car[car_idx]
+            n_sched_car_list[car_idx] = (car.position, car.original_lane, car.lane, car.OT + car.D)
+        
+        to_write_dict = {"sched_car":sched_car_list, "n_sched_car":n_sched_car_list}
+        cfg.to_write_list.append(to_write_dict)

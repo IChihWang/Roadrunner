@@ -13,6 +13,7 @@ import traci
 import config as cfg
 
 def generate_routefile(arrival_rate):
+    idllist=[]
     # demand per second from different directions
     #dir_prob = [0.3, 0.3, 0.3, 0.3]
     #dir_prob = [0.8, 0.8, 0.8, 0.8]
@@ -31,47 +32,7 @@ def generate_routefile(arrival_rate):
 
             print(vType_str, file=routes)
 
-        route_list = []
 
-        route_str = "\n"
-        for x_idx in range(1, cfg.INTER_SIZE+1):
-            y_idx = 1
-            src_lane = "%3.3o"%(x_idx) + "_" + "%3.3o"%(y_idx) + "_4"
-            route_str += "\t<route id=\"route"
-            route_str += src_lane
-            route_str += "\" edges=\""
-            route_str += " " + str(src_lane)
-            route_str += "\"/>\n"
-            route_list.append("route" + src_lane)
-
-            src_lane = "%3.3o"%(y_idx) + "_" + "%3.3o"%(x_idx) + "_1"
-            route_str += "\t<route id=\"route"
-            route_str += src_lane
-            route_str += "\" edges=\""
-            route_str += " " + str(src_lane)
-            route_str += "\"/>\n"
-            route_list.append("route" + src_lane)
-
-            y_idx = cfg.INTER_SIZE
-            src_lane = "%3.3o"%(x_idx) + "_" + "%3.3o"%(y_idx) + "_2"
-            route_str += "\t<route id=\"route"
-            route_str += src_lane
-            route_str += "\" edges=\""
-            route_str += " " + str(src_lane)
-            route_str += "\"/>\n"
-            route_list.append("route" + src_lane)
-
-            src_lane = "%3.3o"%(y_idx) + "_" + "%3.3o"%(x_idx) + "_3"
-            route_str += "\t<route id=\"route"
-            route_str += src_lane
-            route_str += "\" edges=\""
-            route_str += " " + str(src_lane)
-            route_str += "\"/>\n"
-            route_list.append("route" + src_lane)
-
-
-
-        '''
         route_str = "\n"
         for src_idx in range(1,5):
             for dst_idx in range(1,5):
@@ -82,13 +43,9 @@ def generate_routefile(arrival_rate):
                     route_str += " " + str(src_idx)
                     route_str += " -" + str(dst_idx)
                     route_str += "\"/>\n"
-        '''
 
 
         print(route_str, file=routes)
-
-        '''
-
 
         vehNr = 0
         for i in range(cfg.N_TIME_STEP):
@@ -121,24 +78,5 @@ def generate_routefile(arrival_rate):
                     #print("</routes>", file=routes)
                     #return(idllist)
 
-        '''
-
-
-        vehNr = 0
-        for i in range(cfg.N_TIME_STEP):
-            for route in route_list:
-                if random.uniform(0, 1) < arrival_rate:
-                    car_length = random.randrange(5,10)
-                    veh_str = "\t<vehicle id=\"car"
-                    lane_r = random.randrange(cfg.LANE_NUM_PER_DIRECTION)
-
-                    veh_str += '_%i" type="car%i" route="%s" depart="%i" departLane = "%i" departSpeed="%f"/>' % (vehNr, car_length, route, i, lane_r, cfg.MAX_SPEED);
-                    print(veh_str, file=routes)
-
-                    vehNr += 1
-
-                    #print("</routes>", file=routes)
-                    #return(idllist)
-
-
         print("</routes>", file=routes)
+    return(idllist)
