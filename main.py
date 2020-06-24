@@ -43,7 +43,7 @@ from IntersectionManager import IntersectionManager
 
 #myGraphic.gui = Gui()
 
-
+car_dst_dict = dict()
 ###################
 
 
@@ -80,6 +80,12 @@ def run():
             all_c = traci.vehicle.getIDList()
             # Update the position of each car
             for car_id in all_c:
+                '''
+                # Generate source/destination
+                if car_id not in car_dst_dict:
+                    # Get source
+                '''
+            
                 lane_id = traci.vehicle.getLaneID(car_id)
 
                 for intersection_manager in intersection_manager_list:

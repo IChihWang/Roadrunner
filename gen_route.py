@@ -12,6 +12,9 @@ import traci
 
 import config as cfg
 
+# Route id = sink id in MiniVnet
+
+
 def generate_routefile(arrival_rate):
     # demand per second from different directions
     #dir_prob = [0.3, 0.3, 0.3, 0.3]
@@ -35,39 +38,50 @@ def generate_routefile(arrival_rate):
 
         route_str = "\n"
         for x_idx in range(1, cfg.INTER_SIZE+1):
+        
             y_idx = 1
-            src_lane = "%3.3o"%(x_idx) + "_" + "%3.3o"%(y_idx) + "_4"
-            route_str += "\t<route id=\"route"
-            route_str += src_lane
-            route_str += "\" edges=\""
-            route_str += " " + str(src_lane)
-            route_str += "\"/>\n"
-            route_list.append("route" + src_lane)
-
+            route_id = 0*cfg.INTER_SIZE + (x_idx-1)
             src_lane = "%3.3o"%(y_idx) + "_" + "%3.3o"%(x_idx) + "_1"
-            route_str += "\t<route id=\"route"
-            route_str += src_lane
+            route_str += "\t<route id=\""
+            route_str += str(route_id)
             route_str += "\" edges=\""
             route_str += " " + str(src_lane)
             route_str += "\"/>\n"
-            route_list.append("route" + src_lane)
-
+            route_list.append(str(route_id))
+            
             y_idx = cfg.INTER_SIZE
+            route_id = 1*cfg.INTER_SIZE + (x_idx-1)
             src_lane = "%3.3o"%(x_idx) + "_" + "%3.3o"%(y_idx) + "_2"
-            route_str += "\t<route id=\"route"
-            route_str += src_lane
+            route_str += "\t<route id=\""
+            route_str += str(route_id)
             route_str += "\" edges=\""
             route_str += " " + str(src_lane)
             route_str += "\"/>\n"
-            route_list.append("route" + src_lane)
-
+            route_list.append(str(route_id))
+            
+            
+            y_idx = cfg.INTER_SIZE
+            route_id = 2*cfg.INTER_SIZE + (cfg.INTER_SIZE - x_idx)
             src_lane = "%3.3o"%(y_idx) + "_" + "%3.3o"%(x_idx) + "_3"
-            route_str += "\t<route id=\"route"
-            route_str += src_lane
+            route_str += "\t<route id=\""
+            route_str += str(route_id)
             route_str += "\" edges=\""
             route_str += " " + str(src_lane)
             route_str += "\"/>\n"
-            route_list.append("route" + src_lane)
+            route_list.append(str(route_id))
+            
+            y_idx = 1
+            route_id = 3*cfg.INTER_SIZE + (cfg.INTER_SIZE - x_idx)
+            src_lane = "%3.3o"%(x_idx) + "_" + "%3.3o"%(y_idx) + "_4"
+            route_str += "\t<route id=\""
+            route_str += str(route_id)
+            route_str += "\" edges=\""
+            route_str += " " + str(src_lane)
+            route_str += "\"/>\n"
+            route_list.append(str(route_id))
+
+
+            
 
 
 
