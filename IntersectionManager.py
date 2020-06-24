@@ -122,7 +122,9 @@ class IntersectionManager:
 
 
             # Set the position of each cars
-            position = cfg.AZ_LEN + cfg.PZ_LEN + cfg.GZ_LEN+ cfg.BZ_LEN + cfg.CCZ_LEN - traci.vehicle.getLanePosition(car_id)
+            #position = cfg.AZ_LEN + cfg.PZ_LEN + cfg.GZ_LEN+ cfg.BZ_LEN + cfg.CCZ_LEN - traci.vehicle.getLanePosition(car_id)
+            lane_id = traci.vehicle.getLaneID(car_id)
+            position = traci.lane.getLength(lane_id) - traci.vehicle.getLanePosition(car_id)
             self.car_list[car_id].setPosition(position)
 
 

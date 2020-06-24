@@ -1,4 +1,5 @@
 LANE_NUM_PER_DIRECTION = 3
+INTER_SIZE = 2 # 2 by 2
 
 
 MAX_SPEED = 11.18    #25mph
@@ -33,4 +34,3 @@ TIME_STEP = 0.1
 
 DISTANCE = 1.5 # 1.5 lane
 
-INTER_SIZE = 2 # 2 by 2

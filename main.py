@@ -29,6 +29,8 @@ import traceback
 import config as cfg
 
 from gen_route import generate_routefile
+import socket
+
 
 
 # For debug
@@ -40,6 +42,8 @@ from IntersectionManager import IntersectionManager
 
 
 #myGraphic.gui = Gui()
+
+server_port = 8090
 
 ###################
 
@@ -63,6 +67,14 @@ def run():
 
             if (simu_step*10)//1/10.0 == 500:
                 break
+                
+            # Decide car's destination
+            '''
+            src_node_idx = random.randrange(0,INTER_SIZE*4)
+            dst_node_idx = src_node_idx
+            while src_node_idx == dst_node_idx:
+                dst_node_idx = random.randrange(0,INTER_SIZE*4)
+            '''
 
 
             traci.simulationStep()
@@ -112,12 +124,19 @@ def get_options():
                          default=False, help="run the commandline version of sumo")
     options, args = optParser.parse_args()
     return options
+    
+    
+
 
 
 ###########################
 # Main function
 if __name__ == "__main__":
     print("Usage: python code.py <arrival_rate (0~1.0)> <seed> <schedular>")
+    
+    HOST, PORT = "localhost", 9999
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    #sock.connect((HOST, PORT))
 
     seed = int(sys.argv[2])
     random.seed(seed)  # make tests reproducible
@@ -152,3 +171,5 @@ if __name__ == "__main__":
         run()
     except:
         None
+        
+    sock.close()
