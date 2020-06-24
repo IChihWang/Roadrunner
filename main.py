@@ -43,7 +43,6 @@ from IntersectionManager import IntersectionManager
 
 #myGraphic.gui = Gui()
 
-server_port = 8090
 
 ###################
 
