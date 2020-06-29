@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<!-- generated on 06/23/20 21:36:42 by Eclipse SUMO GUI Version 1.6.0
+<!-- generated on 06/29/20 19:44:52 by Eclipse SUMO GUI Version 1.6.0
 <configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
 
     <input>
@@ -20,7 +20,7 @@
     <processing>
         <collision.mingap-factor value="0"/>
         <time-to-teleport value="-1"/>
-        <lanechange.duration value="2"/>
+        <lanechange.duration value="0.5"/>
     </processing>
 
     <report>
@@ -29,7 +29,7 @@
     </report>
 
     <traci_server>
-        <remote-port value="6329"/>
+        <remote-port value="11130"/>
     </traci_server>
 
     <gui_only>

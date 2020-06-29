@@ -44,10 +44,21 @@ from IntersectionManager import IntersectionManager
 #myGraphic.gui = Gui()
 
 car_dst_dict = dict()
+car_path_dict = dict()
+car_status_dict = dict()
+
+# Creating variables for theads
+server_update_flag = False
+new_paths_dict = dict() # (car_id, path)
+send_str = ""
 ###################
 
 
 def run():
+    global server_update_flag
+    global new_paths_dict
+    global send_str
+
     """execute the TraCI control loop"""
     simu_step = 0
 
@@ -67,43 +78,94 @@ def run():
             if (simu_step*10)//1/10.0 == 500:
                 break
                 
-            # Decide car's destination
-            '''
-            src_node_idx = random.randrange(0,INTER_SIZE*4)
-            dst_node_idx = src_node_idx
-            while src_node_idx == dst_node_idx:
-                dst_node_idx = random.randrange(0,INTER_SIZE*4)
-            '''
-
-
             traci.simulationStep()
             all_c = traci.vehicle.getIDList()
+            server_send_str = ""
             # Update the position of each car
             for car_id in all_c:
-                '''
+                
                 # Generate source/destination
                 if car_id not in car_dst_dict:
+                    car_status_dict[car_id] = "NEW"
+                    
+                    # Initial the turn
+                    car_path_dict[car_id] = [("S", None)]   # Initial with going straight
+                
                     # Get source
-                '''
+                    sink_id = traci.vehicle.getRoadID(car_id) # The route ID is the sink ID in MiniVnet
+                    src_node_idx = sink_id
+                    
+                    # Genterate destination
+                    dst_node_idx = src_node_idx
+                    while src_node_idx == dst_node_idx:
+                        dst_node_idx = random.randrange(0,cfg.INTER_SIZE*4)
+                    car_dst_dict[car_id] = dst_node_idx
+            
             
                 lane_id = traci.vehicle.getLaneID(car_id)
-
+                    # TODO: send request
+                    # TODO time lower bound
                 for intersection_manager in intersection_manager_list:
                     if intersection_manager.check_in_my_region(lane_id):
-                        intersection_manager.update_car(car_id, lane_id, simu_step)
+                        # TODO: decide turn
+                        data = intersection_manager.update_car(car_id, lane_id, simu_step, "S")
+                        if data != None:
+                            car_length = data[0]
+                            time_offset = data[1]
+                            intersection_id = data[2]
+                            intersection_from_direction = data[3]
+                            
+                            server_send_str += car_id + ","
+                            
+                            server_send_str += car_status_dict[car_id] + ","
+                            
+                            server_send_str += str(car_length) + ","
+                            server_send_str += str(car_dst_dict[car_id]) + ","
+                            server_send_str += "%1.4f"%(time_offset) + "," + str(intersection_id) + "," + str(intersection_from_direction) + ";"
+                        
                         break
+                        
+            for car_id in car_dst_dict:
+                if car_id not in all_c:
+                    # The car exits the system
+                    car_status_dict[car_id] = "Exit"
+                    del car_path_dict[car_id]
+                    del car_dst_dict[car_id]
 
+            # Send string to the server handler
+            
+            if simu_step%cfg.ROUTING_PERIOD < cfg.TIME_STEP:
+                delete_key_list = []
+                for car_id, car_status in car_status_dict.items():
+                    if car_status == "Exit":
+                        delete_key_list.append(car_id)
+                        server_send_str += car_id + "," + car_status + ";"
+                    elif car_status == "NEW":
+                        car_status_dict[car_id] = "OLD"
+                        
+                for car_id in delete_key_list:
+                    del car_status_dict[car_id]
+            
+                if len(server_send_str) > 0:
+                    string_write_lock.acquire()
+                    send_str = server_send_str
+                    string_write_lock.release()
+                    try:
+                        send_lock.release()
+                    except:
+                        None
+            
 
             for intersection_manager in intersection_manager_list:
                 intersection_manager.run(simu_step)
+                
+            
 
             simu_step += cfg.TIME_STEP
     except Exception as e:
         traceback.print_exc()
 
 
-    #debug_t = threading.Thread(target=debug_ring)
-    #debug_t.start()
     print(sys.argv[1], int(sys.argv[2]), int(sys.argv[3]))
 
     # Print out the measurements
@@ -116,9 +178,42 @@ def run():
     sys.stdout.flush()
 
     traci.close()
+    send_lock.release()
 
 
-
+    
+    
+def server_handler(sock):
+    is_continue = True
+    global server_update_flag
+    global new_paths_dict
+    global send_str
+    
+    try:
+        while is_continue:
+            # Send request
+            send_lock.acquire() # Use the lock to block here
+            string_write_lock.acquire()
+            sock.sendall(send_str + "@")
+            string_write_lock.release()
+            print("Here send?", send_str)
+            
+            # Receive the result
+            data = ""
+            while len(data) == 0 or data[-1] != "@":
+                data += sock.recv(8192)
+                
+            print(data)
+            if data == None:
+                is_continue = False
+            # TODO: parse data to path_dict
+            
+            
+            new_paths_dict # Update paths
+            server_update_flag = True
+    except:
+        None
+    
 
 
 ##########################
@@ -130,7 +225,7 @@ def get_options():
     options, args = optParser.parse_args()
     return options
     
-    
+
 
 
 
@@ -141,7 +236,7 @@ if __name__ == "__main__":
     
     HOST, PORT = "localhost", 9999
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    #sock.connect((HOST, PORT))
+    sock.connect((HOST, PORT))
 
     seed = int(sys.argv[2])
     random.seed(seed)  # make tests reproducible
@@ -168,13 +263,32 @@ if __name__ == "__main__":
 
     try:
         # 3. This is the normal way of using traci. sumo is started as a subprocess and then the python script connects and runs
+
         traci.start([sumoBinary, "-c", "data/icacc+.sumocfg",
                                  "--tripinfo-output", "tripinfo.xml","--step-length", str(cfg.TIME_STEP),
                                  "--collision.mingap-factor", "0"])
 
+
+        
+        string_write_lock = threading.Lock()
+        send_lock = threading.Lock()
+        send_lock.acquire()
+        
+        # Echo and tell the size of the network
+        sock.sendall(str(cfg.INTER_SIZE) + " <- My grid size")
+        
+        print("Server replies: ", sock.recv(1024))
+        
+        server_thread = threading.Thread(target=server_handler, args=(sock,))
+        server_thread.start()
+                                 
         # 4. Start running SUMO
         run()
     except:
         None
-        
+
+    try:
+        send_lock.release()
+    except:
+        None
     sock.close()

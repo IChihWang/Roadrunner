@@ -9,6 +9,9 @@ import random
 from Cars import Car
 from milp import Icacc, IcaccPlus, Fcfs, FixedSignal
 from LaneAdviser import LaneAdviser
+from get_inter_length_info import Data
+
+inter_length_data = Data()
 
 
 class IntersectionManager:
@@ -54,11 +57,13 @@ class IntersectionManager:
     def check_in_my_region(self, lane_id):
         if lane_id in self.in_lanes:
             return True
+        elif self.ID in lane_id:
+            return True
         else:
             return False
 
 
-    def update_car(self, car_id, lane_id, simu_step):
+    def update_car(self, car_id, lane_id, simu_step, car_turn):
         if lane_id in self.in_lanes:
             lane = ((4-int(lane_id[8]))*cfg.LANE_NUM_PER_DIRECTION) + (cfg.LANE_NUM_PER_DIRECTION-int(lane_id[10])-1)
 
@@ -82,7 +87,8 @@ class IntersectionManager:
                 Debug for now:
                     Randomly assign the directions
                 '''
-                new_car.turning = random.choice(['R', 'S', 'L'])
+                #new_car.turning = random.choice(['R', 'S', 'L'])
+                new_car.turning = car_turn
 
                 intersection_dir = int(lane_id[8])
                 x_idx = int(self.ID[0:3])
@@ -128,7 +134,7 @@ class IntersectionManager:
             self.car_list[car_id].setPosition(position)
 
 
-            if (self.car_list[car_id].zone == None) and (position <= cfg.AZ_LEN + cfg.PZ_LEN + cfg.GZ_LEN + cfg.BZ_LEN + cfg.CCZ_LEN - self.car_list[car_id].length):
+            if (self.car_list[car_id].zone == None) and (position <= cfg.TOTAL_LEN - self.car_list[car_id].length):
                 # The minus part is the to prevent cars from changing too early (while in the intersection)
                 self.car_list[car_id].zone = "AZ"
                 self.car_list[car_id].zone_state = "AZ_not_advised"
@@ -146,7 +152,97 @@ class IntersectionManager:
 
             elif (self.car_list[car_id].zone == "BZ") and (position <= cfg.CCZ_LEN):
                 self.car_list[car_id].zone = "CCZ"
+                
+            #return self.car_list[car_id]
+            
+            
+            # On the road
+            time_offset = None
+            intersection_id = None              # After offset, which intersection/node
+            intersection_from_direction = None
+            
+            if self.car_list[car_id].zone == None:
+                # Not yet enter Roadrunner
+                diff_pos = position - cfg.TOTAL_LEN
+                time_offset = diff_pos/cfg.MAX_SPEED
+               
+                # Start from next intersection
+                if time_offset <= cfg.ROUTING_PERIOD:
+                    time_offset = None
+                else:
+                    # Decide the intersection id
+                    direction = lane//cfg.LANE_NUM_PER_DIRECTION
+                    intersection_from_direction = (direction+2)%4
+                    intersection_idx_list = self.ID.split("_")
+                    if intersection_from_direction == 2:
+                        intersection_idx_list[1] = "%3.3o"%(int(intersection_idx_list[1])-1)
+                    elif intersection_from_direction == 3:
+                        intersection_idx_list[0] = "%3.3o"%(int(intersection_idx_list[0])+1)
+                    elif intersection_from_direction == 0:
+                        intersection_idx_list[1] = "%3.3o"%(int(intersection_idx_list[1])+1)
+                    elif intersection_from_direction == 1:
+                        intersection_idx_list[0] = "%3.3o"%(int(intersection_idx_list[0])-1)
+                        
+                    intersection_id = intersection_idx_list[0] + "_" + intersection_idx_list[1]
+            
+            if time_offset == None:
+                # Next intersection
+                if not isinstance(self.car_list[car_id].D, float):
+                    # Not computed yet
+                    time_offset = position/cfg.MAX_SPEED
+                else:
+                    time_offset = self.car_list[car_id].OT + self.car_list[car_id].D
+                
+                # Add the time in the intersection
+                lane = None
+                if self.car_list[car_id].zone == "AZ":
+                    lane = self.car_list[car_id].desired_lane
+                else:
+                    lane = self.car_list[car_id].lane
+                
+                turning = self.car_list[car_id].turning
+                time_in_inter = inter_length_data.getIntertime(lane, turning)
+                
+                time_offset += time_in_inter  # time pass intersection
+                
+                # Start from next intersection
+                if time_offset <= cfg.ROUTING_PERIOD:
+                    # Not allowing scheduling for a while
+                    return None
+                else:
+                    direction = lane//cfg.LANE_NUM_PER_DIRECTION
+                    if turning == "S":
+                        intersection_from_direction = (direction+2)%4
+                    elif turning == "L":
+                        intersection_from_direction = (direction-1)%4
+                    elif turning == "R":
+                        intersection_from_direction = (direction+1)%4
+                        
+                    intersection_id = self.ID
+                    
+            length = self.car_list[car_id].length
+            
+            return (length, time_offset, intersection_id, int(intersection_from_direction))
+        
+        elif self.ID in lane_id:
+            position = traci.lane.getLength(lane_id) - traci.vehicle.getLanePosition(car_id)
+            
+            speed_in_intersection = cfg.MAX_SPEED
+            if car_turn != "S":
+                speed_in_intersection = cfg.TURN_SPEED
+                
+            time_offset = position/speed_in_intersection
+            
 
+            if time_offset <= cfg.ROUTING_PERIOD:
+                # Not allowing scheduling for a while
+                return None
+                    
+            length = traci.vehicle.getLength(car_id)
+            return (length, time_offset, intersection_id, intersection_from_direction)
+            
+        else:
+            return None
 
     def run(self, simu_step):
 

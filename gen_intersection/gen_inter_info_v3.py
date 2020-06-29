@@ -22,6 +22,7 @@ def main():
     file_lines = file_all.splitlines()
 
     d = dict()
+    length_dict = dict()
     for line in file_lines:
         data = line.split()
         data_key = data[0]
@@ -33,85 +34,26 @@ def main():
         data_Py = float(data[6])
         d[data_key] = ((data_Xm,data_Ym), (data_Xd,data_Yd), (data_Px,data_Py))
 
+        end_str_idx = len(data_key)
+        for str_idx in range(len(data_key)):
+            if data_key[str_idx].isalpha():
+                end_str_idx = str_idx+1
+                break
+
+        length_key = data_key[0:end_str_idx]
+        length_value = data_Px
+        if length_key in length_dict:
+            assert (length_dict[length_key] == length_value), "Not matched"
+            pass
+
+        length_dict[length_key] = length_value
+
+
     genConflictRegionData(d)
+    genLengthData(length_dict)
 
-'''
-def genConflictRegionData(d):
-    pi = math.pi
-
-    # Conflict region dictionary
-    # Value format: ((Xm, Ym), (Xd, Yd), (Pi, Pj))
-
-    # Example: "1L2R" - 1L is x axis and 2R is y axis.
-
-    tau = dict()
-
-    for key, value in d.items():
-        car_1_lane = key[2]
-        car_2_lane = key[0]
-        car_1_dir = key[3]
-        car_2_dir = key[1]
-
-        car_1_speed = STRAIGHT_SPEED;
-        car_2_speed = STRAIGHT_SPEED;
-
-        if key == '0S7L':
-            print(value[0][0]*LANE_WIDTH, value[0][1]*LANE_WIDTH, value[1][0]*LANE_WIDTH, value[1][1]*LANE_WIDTH, value[2][0]*LANE_WIDTH, value[2][1]*LANE_WIDTH)
-
-        if car_1_dir != 'S':
-            car_1_speed = TURN_SPEED
-        if car_2_dir != 'S':
-            car_2_speed = TURN_SPEED
-
-        sub_solver = pywraplp.Solver('SolveSubProblem',pywraplp.Solver.CBC_MIXED_INTEGER_PROGRAMMING)
-        S1 = sub_solver.NumVar(0, value[2][0]*LANE_WIDTH, 's1')
-        S2 = sub_solver.NumVar(0, value[2][1]*LANE_WIDTH, 's2')
-
-        tmp_conts1 = sub_solver.Constraint(value[0][0]*LANE_WIDTH, value[1][0]*LANE_WIDTH)
-        tmp_conts1.SetCoefficient(S1,1)
-        tmp_conts2 = sub_solver.Constraint(value[0][1]*LANE_WIDTH, value[1][1]*LANE_WIDTH)
-        tmp_conts2.SetCoefficient(S2,1)
-
-
-        # (Ym-Yd)Xm-(Xm-Xd)Ym
-        bound = (value[0][1]*LANE_WIDTH-value[1][1]*LANE_WIDTH)*value[0][0]*LANE_WIDTH
-        bound += -(value[0][0]*LANE_WIDTH-value[1][0]*LANE_WIDTH)*value[0][1]*LANE_WIDTH
-        tmp_conts3 = sub_solver.Constraint(bound, bound)
-        # (Ym-Yd)S1-(Xm-Xd)S2
-        tmp_conts3.SetCoefficient(S1,(value[0][1]*LANE_WIDTH-value[1][1]*LANE_WIDTH))
-        tmp_conts3.SetCoefficient(S2,-(value[0][0]*LANE_WIDTH-value[1][0]*LANE_WIDTH))
-
-
-        objective = sub_solver.Objective()
-        objective.SetCoefficient(S1, 1/car_1_speed)
-        objective.SetCoefficient(S2, -1/car_2_speed)
-
-        objective.SetMaximization()
-        status = sub_solver.Solve()
-        if status == sub_solver.OPTIMAL:
-            tau_S1_S2 = S1.solution_value()/car_1_speed-S2.solution_value()/car_2_speed
-        else:
-            print ("Fail to find")
-            print (key)
-
-
-        objective.SetMinimization()
-        status = sub_solver.Solve()
-        if status == sub_solver.OPTIMAL:
-            tau_S2_S1 = -( S1.solution_value()/car_1_speed-S2.solution_value()/car_2_speed )
-        else:
-            print ("Fail to find")
-            print (key)
-
-        tau[key]=(tau_S1_S2, tau_S2_S1)
-
-
-    with open("../inter_info/"+sys.argv[2]+".json", 'w') as file:
-        file.write(json.dumps(tau))
-'''
 
 def genConflictRegionData(d):
-    pi = math.pi
 
     # Conflict region dictionary
     # Value format: ((Xm, Ym), (Xd, Yd), (Pi, Pj))
@@ -126,13 +68,20 @@ def genConflictRegionData(d):
         Ym = value[0][1]*LANE_WIDTH
         Xd = value[1][0]*LANE_WIDTH
         Yd = value[1][1]*LANE_WIDTH
-        
+
 
         tau[key]={'Xm':Xm, 'Ym':Ym, 'Xd':Xd, 'Yd':Yd}
 
 
     with open("../inter_info/"+sys.argv[2]+".json", 'w') as file:
         file.write(json.dumps(tau))
+
+def genLengthData(length_dict):
+
+    for key, value in length_dict.items():
+        length_dict[key] = value*LANE_WIDTH
+    with open("../inter_length_info/"+sys.argv[2]+".json", 'w') as file:
+        file.write(json.dumps(length_dict))
 
 
 if __name__ == '__main__':
