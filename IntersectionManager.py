@@ -72,7 +72,7 @@ class IntersectionManager:
                 # Gather the information of the new car
                 #traci.vehicle.setSpeed(car_id, cfg.MAX_SPEED)
                 length = traci.vehicle.getLength(car_id)
-                turning = "R"
+                turning = car_turn
 
                 new_car = Car(car_id, length, lane, turning)
                 new_car.Enter_T = simu_step - (traci.vehicle.getLanePosition(car_id))/cfg.MAX_SPEED
@@ -88,7 +88,7 @@ class IntersectionManager:
                     Randomly assign the directions
                 '''
                 #new_car.turning = random.choice(['R', 'S', 'L'])
-                new_car.turning = car_turn
+                #new_car.turning = car_turn
 
                 intersection_dir = int(lane_id[8])
                 x_idx = int(self.ID[0:3])
@@ -125,8 +125,6 @@ class IntersectionManager:
 
 
 
-
-
             # Set the position of each cars
             #position = cfg.AZ_LEN + cfg.PZ_LEN + cfg.GZ_LEN+ cfg.BZ_LEN + cfg.CCZ_LEN - traci.vehicle.getLanePosition(car_id)
             lane_id = traci.vehicle.getLaneID(car_id)
@@ -153,9 +151,15 @@ class IntersectionManager:
             elif (self.car_list[car_id].zone == "BZ") and (position <= cfg.CCZ_LEN):
                 self.car_list[car_id].zone = "CCZ"
                 
-            #return self.car_list[car_id]
+            
+            # Not yet enter Roadrunner, still able to change turn
+            if position > cfg.TOTAL_LEN:
+                self.car_list[car_id].turning = car_turn
+                print("TURN   ", car_id, self.car_list[car_id].turning)
             
             
+            
+            # Decide the time offset
             # On the road
             time_offset = None
             intersection_id = None              # After offset, which intersection/node

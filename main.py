@@ -44,20 +44,22 @@ from IntersectionManager import IntersectionManager
 #myGraphic.gui = Gui()
 
 car_dst_dict = dict()
-car_path_dict = dict()
 car_status_dict = dict()
 
 # Creating variables for theads
+car_src_dict = dict()
 server_update_flag = False
-new_paths_dict = dict() # (car_id, path)
+car_path_dict = dict() # (car_id, path(node_turn_dict) )
 send_str = ""
 ###################
 
 
 def run():
     global server_update_flag
-    global new_paths_dict
+    global car_path_dict
     global send_str
+    global car_src_dict
+    global car_status_dict
 
     """execute the TraCI control loop"""
     simu_step = 0
@@ -88,8 +90,7 @@ def run():
                 if car_id not in car_dst_dict:
                     car_status_dict[car_id] = "NEW"
                     
-                    # Initial the turn
-                    car_path_dict[car_id] = [("S", None)]   # Initial with going straight
+                    
                 
                     # Get source
                     sink_id = traci.vehicle.getRoadID(car_id) # The route ID is the sink ID in MiniVnet
@@ -107,8 +108,13 @@ def run():
                     # TODO time lower bound
                 for intersection_manager in intersection_manager_list:
                     if intersection_manager.check_in_my_region(lane_id):
-                        # TODO: decide turn
-                        data = intersection_manager.update_car(car_id, lane_id, simu_step, "S")
+                        car_turn = "S"  # by default
+                        
+                        if car_id in car_path_dict:
+                            car_turn = car_path_dict[car_id][intersection_manager.ID]
+                            print("HERER", car_turn, car_id, car_path_dict[car_id])
+                            
+                        data = intersection_manager.update_car(car_id, lane_id, simu_step, car_turn)
                         if data != None:
                             car_length = data[0]
                             time_offset = data[1]
@@ -122,18 +128,22 @@ def run():
                             server_send_str += str(car_length) + ","
                             server_send_str += str(car_dst_dict[car_id]) + ","
                             server_send_str += "%1.4f"%(time_offset) + "," + str(intersection_id) + "," + str(intersection_from_direction) + ";"
-                        
+                            car_src_dict[car_id] = intersection_id
                         break
                         
+            del_car_id_list = []
             for car_id in car_dst_dict:
                 if car_id not in all_c:
                     # The car exits the system
                     car_status_dict[car_id] = "Exit"
                     del car_path_dict[car_id]
-                    del car_dst_dict[car_id]
+                    del car_src_dict[car_id]
+                    del_car_id_list.append(car_id)
 
+            for car_id in del_car_id_list:
+                del car_dst_dict[car_id]
+                    
             # Send string to the server handler
-            
             if simu_step%cfg.ROUTING_PERIOD < cfg.TIME_STEP:
                 delete_key_list = []
                 for car_id, car_status in car_status_dict.items():
@@ -186,8 +196,10 @@ def run():
 def server_handler(sock):
     is_continue = True
     global server_update_flag
-    global new_paths_dict
+    global car_path_dict
+    global car_src_dict
     global send_str
+    global car_status_dict
     
     try:
         while is_continue:
@@ -196,23 +208,46 @@ def server_handler(sock):
             string_write_lock.acquire()
             sock.sendall(send_str + "@")
             string_write_lock.release()
-            print("Here send?", send_str)
             
             # Receive the result
             data = ""
             while len(data) == 0 or data[-1] != "@":
                 data += sock.recv(8192)
                 
-            print(data)
             if data == None:
                 is_continue = False
-            # TODO: parse data to path_dict
+            
+            # Parse data to path_dict
+            data = data[0:-2]
+            cars_data_list = data.split(";")
             
             
-            new_paths_dict # Update paths
+            for car_data in cars_data_list:
+                car_data_list = car_data.split(",")
+                car_id = car_data_list[0]
+                route_str = car_data_list[1][0:-1]
+                nodes_turn = route_str.split("/")
+                
+                node_turn_dict = dict()
+                for node_turn in nodes_turn:
+                    intersection_id, turn = node_turn.split(":")
+                    node_turn_dict[intersection_id] = turn
+
+                if (car_id not in car_path_dict) or (car_src_dict[car_id] in node_turn_dict):
+                    # Update the new path
+                    #print(car_id, "Update new path", (car_id not in car_path_dict))
+                    car_path_dict[car_id] = node_turn_dict
+                    print(car_id, car_path_dict[car_id])
+                else:
+                    # The car and expected path is not synchronized
+                    if car_status_dict[car_id] == "OLD":
+                        # Force reroute
+                        car_status_dict[car_id] = "NEW"
+                        #print(car_id, "Force reroute")
+           
             server_update_flag = True
-    except:
-        None
+    except Exception as e:
+        traceback.print_exc()
     
 
 
