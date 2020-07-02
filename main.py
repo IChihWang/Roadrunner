@@ -106,13 +106,16 @@ def run():
                 lane_id = traci.vehicle.getLaneID(car_id)
                     # TODO: send request
                     # TODO time lower bound
+                
+                is_handled = False
                 for intersection_manager in intersection_manager_list:
                     if intersection_manager.check_in_my_region(lane_id):
+                        is_handled = True
                         car_turn = "S"  # by default
                         
                         if car_id in car_path_dict:
+                            print(car_id, car_path_dict[car_id])
                             car_turn = car_path_dict[car_id][intersection_manager.ID]
-                            print("HERER", car_turn, car_id, car_path_dict[car_id])
                             
                         data = intersection_manager.update_car(car_id, lane_id, simu_step, car_turn)
                         if data != None:
@@ -129,7 +132,11 @@ def run():
                             server_send_str += str(car_dst_dict[car_id]) + ","
                             server_send_str += "%1.4f"%(time_offset) + "," + str(intersection_id) + "," + str(intersection_from_direction) + ";"
                             car_src_dict[car_id] = intersection_id
+                            
                         break
+                        
+                if not is_handled:
+                    traci.vehicle.setSpeed(car_id, cfg.MAX_SPEED)
                         
             del_car_id_list = []
             for car_id in car_dst_dict:
@@ -170,7 +177,6 @@ def run():
                 intersection_manager.run(simu_step)
                 
             
-
             simu_step += cfg.TIME_STEP
     except Exception as e:
         traceback.print_exc()
@@ -221,29 +227,29 @@ def server_handler(sock):
             data = data[0:-2]
             cars_data_list = data.split(";")
             
+            if len(data) > 0:
             
-            for car_data in cars_data_list:
-                car_data_list = car_data.split(",")
-                car_id = car_data_list[0]
-                route_str = car_data_list[1][0:-1]
-                nodes_turn = route_str.split("/")
-                
-                node_turn_dict = dict()
-                for node_turn in nodes_turn:
-                    intersection_id, turn = node_turn.split(":")
-                    node_turn_dict[intersection_id] = turn
+                for car_data in cars_data_list:
+                    car_data_list = car_data.split(",")
+                    car_id = car_data_list[0]
+                    route_str = car_data_list[1][0:-1]
+                    nodes_turn = route_str.split("/")
+                    
+                    node_turn_dict = dict()
+                    for node_turn in nodes_turn:
+                        intersection_id, turn = node_turn.split(":")
+                        node_turn_dict[intersection_id] = turn
 
-                if (car_id not in car_path_dict) or (car_src_dict[car_id] in node_turn_dict):
-                    # Update the new path
-                    #print(car_id, "Update new path", (car_id not in car_path_dict))
-                    car_path_dict[car_id] = node_turn_dict
-                    print(car_id, car_path_dict[car_id])
-                else:
-                    # The car and expected path is not synchronized
-                    if car_status_dict[car_id] == "OLD":
-                        # Force reroute
-                        car_status_dict[car_id] = "NEW"
-                        #print(car_id, "Force reroute")
+                    if (car_id not in car_path_dict) or (car_src_dict[car_id] in node_turn_dict):
+                        # Update the new path
+                        #print(car_id, "Update new path", (car_id not in car_path_dict))
+                        car_path_dict[car_id] = node_turn_dict
+                    else:
+                        # The car and expected path is not synchronized
+                        if car_status_dict[car_id] == "OLD":
+                            # Force reroute
+                            car_status_dict[car_id] = "NEW"
+                            #print(car_id, "Force reroute")
            
             server_update_flag = True
     except Exception as e:

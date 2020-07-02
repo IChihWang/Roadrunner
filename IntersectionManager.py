@@ -61,12 +61,47 @@ class IntersectionManager:
             return True
         else:
             return False
+            
+    def change_turning(self, car_id, car_turn, intersection_dir):
+        x_idx = int(self.ID[0:3])
+        y_idx = int(self.ID[4:7])
+
+        target_dir = None
+
+        if car_turn == 'R':
+            target_dir = ((intersection_dir-1)+1)%4+1
+        elif car_turn == 'S':
+            target_dir = intersection_dir
+        elif car_turn == 'L':
+            target_dir = ((intersection_dir-1)-1)%4+1
+
+        if target_dir == 1:
+            x_idx = x_idx + 1
+            y_idx = y_idx
+        elif target_dir == 2:
+            x_idx = x_idx
+            y_idx = y_idx - 1
+        elif target_dir == 3:
+            x_idx = x_idx - 1
+            y_idx = y_idx
+        elif target_dir == 4:
+            x_idx = x_idx
+            y_idx = y_idx + 1
+
+        intersection_manager_id = "%3.3o"%(x_idx) + "_" + "%3.3o"%(y_idx)
+
+        target_edge = intersection_manager_id + "_" + str(target_dir)
+        traci.vehicle.changeTarget(car_id, target_edge)
+        traci.vehicle.setMaxSpeed(car_id, cfg.MAX_SPEED)
+        traci.vehicle.setColor(car_id, (255,255,255))
 
 
     def update_car(self, car_id, lane_id, simu_step, car_turn):
         if lane_id in self.in_lanes:
             lane = ((4-int(lane_id[8]))*cfg.LANE_NUM_PER_DIRECTION) + (cfg.LANE_NUM_PER_DIRECTION-int(lane_id[10])-1)
 
+            
+            
             # Add car if the car is not in the list yet
             if car_id not in self.car_list:
                 # Gather the information of the new car
@@ -82,7 +117,6 @@ class IntersectionManager:
                 #traci.vehicle.setSpeedMode(car_id, 7)
 
 
-
                 '''
                 Debug for now:
                     Randomly assign the directions
@@ -91,40 +125,8 @@ class IntersectionManager:
                 #new_car.turning = car_turn
 
                 intersection_dir = int(lane_id[8])
-                x_idx = int(self.ID[0:3])
-                y_idx = int(self.ID[4:7])
-
-                target_dir = None
-
-                if new_car.turning == 'R':
-                    target_dir = ((intersection_dir-1)+1)%4+1
-                elif new_car.turning == 'S':
-                    target_dir = intersection_dir
-                elif new_car.turning == 'L':
-                    target_dir = ((intersection_dir-1)-1)%4+1
-
-                if target_dir == 1:
-                    x_idx = x_idx + 1
-                    y_idx = y_idx
-                elif target_dir == 2:
-                    x_idx = x_idx
-                    y_idx = y_idx - 1
-                elif target_dir == 3:
-                    x_idx = x_idx - 1
-                    y_idx = y_idx
-                elif target_dir == 4:
-                    x_idx = x_idx
-                    y_idx = y_idx + 1
-
-                intersection_manager_id = "%3.3o"%(x_idx) + "_" + "%3.3o"%(y_idx)
-
-                target_edge = intersection_manager_id + "_" + str(target_dir)
-                traci.vehicle.changeTarget(car_id, target_edge)
-                traci.vehicle.setMaxSpeed(car_id, cfg.MAX_SPEED)
-                traci.vehicle.setColor(car_id, (255,255,255))
-
-
-
+                self.change_turning(car_id, car_turn, intersection_dir)
+                
             # Set the position of each cars
             #position = cfg.AZ_LEN + cfg.PZ_LEN + cfg.GZ_LEN+ cfg.BZ_LEN + cfg.CCZ_LEN - traci.vehicle.getLanePosition(car_id)
             lane_id = traci.vehicle.getLaneID(car_id)
@@ -154,8 +156,9 @@ class IntersectionManager:
             
             # Not yet enter Roadrunner, still able to change turn
             if position > cfg.TOTAL_LEN:
+                intersection_dir = int(lane_id[8])
                 self.car_list[car_id].turning = car_turn
-                print("TURN   ", car_id, self.car_list[car_id].turning)
+                self.change_turning(car_id, car_turn, intersection_dir)
             
             
             
@@ -169,6 +172,7 @@ class IntersectionManager:
                 # Not yet enter Roadrunner
                 diff_pos = position - cfg.TOTAL_LEN
                 time_offset = diff_pos/cfg.MAX_SPEED
+                
                
                 # Start from next intersection
                 if time_offset <= cfg.ROUTING_PERIOD:
@@ -229,21 +233,8 @@ class IntersectionManager:
             return (length, time_offset, intersection_id, int(intersection_from_direction))
         
         elif self.ID in lane_id:
-            position = traci.lane.getLength(lane_id) - traci.vehicle.getLanePosition(car_id)
+            return None
             
-            speed_in_intersection = cfg.MAX_SPEED
-            if car_turn != "S":
-                speed_in_intersection = cfg.TURN_SPEED
-                
-            time_offset = position/speed_in_intersection
-            
-
-            if time_offset <= cfg.ROUTING_PERIOD:
-                # Not allowing scheduling for a while
-                return None
-                    
-            length = traci.vehicle.getLength(car_id)
-            return (length, time_offset, intersection_id, intersection_from_direction)
             
         else:
             return None
