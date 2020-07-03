@@ -48,14 +48,12 @@ car_status_dict = dict()
 
 # Creating variables for theads
 car_src_dict = dict()
-server_update_flag = False
 car_path_dict = dict() # (car_id, path(node_turn_dict) )
 send_str = ""
 ###################
 
 
 def run():
-    global server_update_flag
     global car_path_dict
     global send_str
     global car_src_dict
@@ -77,6 +75,9 @@ def run():
     try:
         while traci.simulation.getMinExpectedNumber() > 0:
 
+            #Get timestamp
+            TiStamp1 = time.time()
+            
             if (simu_step*10)//1/10.0 == 500:
                 break
                 
@@ -114,7 +115,6 @@ def run():
                         car_turn = "S"  # by default
                         
                         if car_id in car_path_dict:
-                            print(car_id, car_path_dict[car_id])
                             car_turn = car_path_dict[car_id][intersection_manager.ID]
                             
                         data = intersection_manager.update_car(car_id, lane_id, simu_step, car_turn)
@@ -164,13 +164,50 @@ def run():
                     del car_status_dict[car_id]
             
                 if len(server_send_str) > 0:
-                    string_write_lock.acquire()
                     send_str = server_send_str
-                    string_write_lock.release()
-                    try:
-                        send_lock.release()
-                    except:
-                        None
+                    
+                    # Send request
+                    sock.sendall(send_str + "@")
+                    
+                    # Receive the result
+                    data = ""
+                    while len(data) == 0 or data[-1] != "@":
+                        data += sock.recv(8192)
+                        
+                    if data == None:
+                        is_continue = False
+                    
+                    # Parse data to path_dict
+                    data = data[0:-2]
+                    cars_data_list = data.split(";")
+                    
+                    if len(data) > 0:
+                    
+                        for car_data in cars_data_list:
+                            car_data_list = car_data.split(",")
+                            car_id = car_data_list[0]
+                            route_str = car_data_list[1][0:-1]
+                            nodes_turn = route_str.split("/")
+                            
+                            node_turn_dict = dict()
+                            for node_turn in nodes_turn:
+                                intersection_id, turn = node_turn.split(":")
+                                node_turn_dict[intersection_id] = turn
+
+                            if (car_id not in car_path_dict) or (car_src_dict[car_id] in node_turn_dict):
+                                # Update the new path
+                                #print(car_id, "Update new path", (car_id not in car_path_dict))
+                                car_path_dict[car_id] = node_turn_dict
+                            else:
+                                # The car and expected path is not synchronized
+                                if car_status_dict[car_id] == "OLD":
+                                    # Force reroute
+                                    car_status_dict[car_id] = "NEW"
+                                    #print(car_id, "Force reroute")
+                    
+                    
+                    
+                    
             
 
             for intersection_manager in intersection_manager_list:
@@ -178,6 +215,18 @@ def run():
                 
             
             simu_step += cfg.TIME_STEP
+            
+            
+            
+            #Synchronize time
+            deltaT = cfg.TIME_STEP
+            TiStamp2 = time.time() - TiStamp1
+            if TiStamp2 > deltaT:
+                pass
+            else:
+                #time.sleep(deltaT-TiStamp2)
+                pass
+                
     except Exception as e:
         traceback.print_exc()
 
@@ -201,7 +250,6 @@ def run():
     
 def server_handler(sock):
     is_continue = True
-    global server_update_flag
     global car_path_dict
     global car_src_dict
     global send_str
@@ -209,6 +257,7 @@ def server_handler(sock):
     
     try:
         while is_continue:
+        
             # Send request
             send_lock.acquire() # Use the lock to block here
             string_write_lock.acquire()
@@ -251,7 +300,6 @@ def server_handler(sock):
                             car_status_dict[car_id] = "NEW"
                             #print(car_id, "Force reroute")
            
-            server_update_flag = True
     except Exception as e:
         traceback.print_exc()
     
@@ -275,7 +323,7 @@ def get_options():
 if __name__ == "__main__":
     print("Usage: python code.py <arrival_rate (0~1.0)> <seed> <schedular>")
     
-    HOST, PORT = "localhost", 9999
+    HOST, PORT = "128.238.147.124", 9999
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect((HOST, PORT))
 
@@ -320,8 +368,8 @@ if __name__ == "__main__":
         
         print("Server replies: ", sock.recv(1024))
         
-        server_thread = threading.Thread(target=server_handler, args=(sock,))
-        server_thread.start()
+        #server_thread = threading.Thread(target=server_handler, args=(sock,))
+        #server_thread.start()
                                  
         # 4. Start running SUMO
         run()
