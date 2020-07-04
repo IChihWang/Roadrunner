@@ -163,47 +163,46 @@ def run():
                 for car_id in delete_key_list:
                     del car_status_dict[car_id]
             
-                if len(server_send_str) > 0:
-                    send_str = server_send_str
+                send_str = server_send_str
+                
+                # Send request
+                sock.sendall(send_str + "@")
+                
+                # Receive the result
+                data = ""
+                while len(data) == 0 or data[-1] != "@":
+                    data += sock.recv(8192)
                     
-                    # Send request
-                    sock.sendall(send_str + "@")
-                    
-                    # Receive the result
-                    data = ""
-                    while len(data) == 0 or data[-1] != "@":
-                        data += sock.recv(8192)
+                if data == None:
+                    is_continue = False
+                
+                # Parse data to path_dict
+                data = data[0:-2]
+                cars_data_list = data.split(";")
+                
+                if len(data) > 0:
+                
+                    for car_data in cars_data_list:
+                        car_data_list = car_data.split(",")
+                        car_id = car_data_list[0]
+                        route_str = car_data_list[1][0:-1]
+                        nodes_turn = route_str.split("/")
                         
-                    if data == None:
-                        is_continue = False
-                    
-                    # Parse data to path_dict
-                    data = data[0:-2]
-                    cars_data_list = data.split(";")
-                    
-                    if len(data) > 0:
-                    
-                        for car_data in cars_data_list:
-                            car_data_list = car_data.split(",")
-                            car_id = car_data_list[0]
-                            route_str = car_data_list[1][0:-1]
-                            nodes_turn = route_str.split("/")
-                            
-                            node_turn_dict = dict()
-                            for node_turn in nodes_turn:
-                                intersection_id, turn = node_turn.split(":")
-                                node_turn_dict[intersection_id] = turn
+                        node_turn_dict = dict()
+                        for node_turn in nodes_turn:
+                            intersection_id, turn = node_turn.split(":")
+                            node_turn_dict[intersection_id] = turn
 
-                            if (car_id not in car_path_dict) or (car_src_dict[car_id] in node_turn_dict):
-                                # Update the new path
-                                #print(car_id, "Update new path", (car_id not in car_path_dict))
-                                car_path_dict[car_id] = node_turn_dict
-                            else:
-                                # The car and expected path is not synchronized
-                                if car_status_dict[car_id] == "OLD":
-                                    # Force reroute
-                                    car_status_dict[car_id] = "NEW"
-                                    #print(car_id, "Force reroute")
+                        if (car_id not in car_path_dict) or (car_src_dict[car_id] in node_turn_dict):
+                            # Update the new path
+                            #print(car_id, "Update new path", (car_id not in car_path_dict))
+                            car_path_dict[car_id] = node_turn_dict
+                        else:
+                            # The car and expected path is not synchronized
+                            if car_status_dict[car_id] == "OLD":
+                                # Force reroute
+                                car_status_dict[car_id] = "NEW"
+                                #print(car_id, "Force reroute")
                     
                     
                     
@@ -323,7 +322,8 @@ def get_options():
 if __name__ == "__main__":
     print("Usage: python code.py <arrival_rate (0~1.0)> <seed> <schedular>")
     
-    HOST, PORT = "128.238.147.124", 9999
+    #HOST, PORT = "128.238.147.124", 9999
+    HOST, PORT = "localhost", 9999
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect((HOST, PORT))
 
@@ -364,7 +364,10 @@ if __name__ == "__main__":
         send_lock.acquire()
         
         # Echo and tell the size of the network
-        sock.sendall(str(cfg.INTER_SIZE) + " <- My grid size")
+        init_message = "My_grid_size:" + str(cfg.INTER_SIZE)
+        init_message += ":My_schedule_period:" + str(int(cfg.GZ_LEN/cfg.MAX_SPEED))
+        init_message += ":My_routing_period:" + str(cfg.ROUTING_PERIOD_NUM)
+        sock.sendall(init_message)
         
         print("Server replies: ", sock.recv(1024))
         

@@ -300,7 +300,7 @@ class IntersectionManager:
         # Grouping the cars and schedule
         # Put here due to the thread handling
         self.schedule_period_count += cfg.TIME_STEP
-        if self.schedule_period_count > cfg.GZ_LEN/cfg.MAX_SPEED -1:
+        if self.schedule_period_count > int(cfg.GZ_LEN/cfg.MAX_SPEED) -1:
             if self.scheduling_thread == None or (not self.scheduling_thread.isAlive()):
 
                 # Classify the cars for scheduler
