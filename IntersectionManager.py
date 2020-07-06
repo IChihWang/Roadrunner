@@ -258,6 +258,7 @@ class IntersectionManager:
                 traci.vehicle.setSpeed(car_id, car.speed_in_intersection)
 
                 del self.ccz_list[car_id]
+                
 
                 self.car_list[car_id].Leave_T = simu_step
                 self.total_delays += (car.Leave_T - car.Enter_T) - ((cfg.CCZ_LEN+cfg.GZ_LEN+cfg.BZ_LEN+cfg.PZ_LEN+cfg.AZ_LEN)/cfg.MAX_SPEED)

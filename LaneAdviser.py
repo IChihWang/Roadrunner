@@ -7,6 +7,10 @@ import math
 import numpy
 #import myGraphic
 
+from get_inter_length_info import Data
+
+inter_length_data = Data()
+
 RESOLUTION = 2  # According to gen_advise.cpp
 
 class LaneAdviser:
@@ -115,7 +119,7 @@ class LaneAdviser:
         # Sort out the LOTs and list the candidates
         start_lane = (car.lane//cfg.LANE_NUM_PER_DIRECTION)*cfg.LANE_NUM_PER_DIRECTION
 
-        occup_time_list = [self.getMaxTime(start_lane+idx, car.turning, self.timeMatrix) for idx in range(cfg.LANE_NUM_PER_DIRECTION)]
+        occup_time_list = [self.getMaxTime(start_lane+idx, car.turning, self.timeMatrix)+inter_length_data.getIntertime(start_lane+idx, car.turning) for idx in range(cfg.LANE_NUM_PER_DIRECTION)]
         candidate_list = numpy.argsort(occup_time_list)
 
         # Get the shortest or the most ideal lane
@@ -134,7 +138,7 @@ class LaneAdviser:
                         ideal_lane = start_lane+lane_idx
                         break
         advise_lane = ideal_lane
-
+        
         # Scan through the candidates and see if we want to change our candidates
         # Get the cost of the ideal trajectory
         ideal_timeMatrix = self.copyMatrix()

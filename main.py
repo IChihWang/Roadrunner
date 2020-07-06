@@ -45,6 +45,7 @@ from IntersectionManager import IntersectionManager
 
 car_dst_dict = dict()
 car_status_dict = dict()
+car_enter_time = dict()
 
 # Creating variables for theads
 car_src_dict = dict()
@@ -91,8 +92,6 @@ def run():
                 if car_id not in car_dst_dict:
                     car_status_dict[car_id] = "NEW"
                     
-                    
-                
                     # Get source
                     sink_id = traci.vehicle.getRoadID(car_id) # The route ID is the sink ID in MiniVnet
                     src_node_idx = sink_id
@@ -102,6 +101,9 @@ def run():
                     while src_node_idx == dst_node_idx:
                         dst_node_idx = random.randrange(0,cfg.INTER_SIZE*4)
                     car_dst_dict[car_id] = dst_node_idx
+                    
+                    # Record entering time
+                    car_enter_time[car_id] = simu_step
             
             
                 lane_id = traci.vehicle.getLaneID(car_id)
@@ -148,7 +150,9 @@ def run():
                     del_car_id_list.append(car_id)
 
             for car_id in del_car_id_list:
+                print(car_id, simu_step-car_enter_time[car_id])
                 del car_dst_dict[car_id]
+                del car_enter_time[car_id]
                     
             # Send string to the server handler
             if simu_step%cfg.ROUTING_PERIOD < cfg.TIME_STEP:
