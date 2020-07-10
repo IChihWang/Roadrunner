@@ -42,7 +42,7 @@ path_table = None
 
 arrival_rate = sys.argv[1]
 seed = int(sys.argv[2])
-sumoBinary = checkBinary('sumo')
+sumoBinary = checkBinary('sumo-gui')
 ###################
 
 
@@ -72,10 +72,7 @@ def run(path_dict):
     try:
         while traci.simulation.getMinExpectedNumber() > 0:
 
-            #Get timestamp
-            TiStamp1 = time.time()
-
-            if (simu_step*10)//1/10.0 == 600:
+            if (simu_step*10)//1/10.0 >= 600:
                 break
 
             traci.simulationStep()
