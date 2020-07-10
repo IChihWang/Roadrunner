@@ -141,9 +141,9 @@ def run(path_dict):
     #print("avg_fuel = ",intersection_manager.total_fuel_consumption/intersection_manager.fuel_consumption_count)
     avg_travel_time = sum(travel_time_list)/len(travel_time_list)
     car_num = len(travel_time_list)
-    print("avg_delay = ", avg_travel_time)
-    print("car_num = ", len(travel_time_list))
-    print("arrival_rate = ", len(travel_time_list)/600.0)
+    print("=== avg_travel_time = ", avg_travel_time)
+    print("=== car_num = ", len(travel_time_list))
+    print("=== arrival_rate = ", len(travel_time_list)/600.0)
     sys.stdout.flush()
 
     traci.close()
@@ -178,6 +178,7 @@ def recursive_run(car_id_list, car_id_list_idx, path_dict):
             optimal_travel_time = avg_travel_time
             optimal_car_num = car_num
 
+    print("=== best so far avg_travel_time = ", optimal_travel_time)
     return (optimal_car_num, optimal_travel_time)
 
 
