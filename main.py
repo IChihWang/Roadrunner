@@ -42,7 +42,7 @@ path_table = None
 
 arrival_rate = sys.argv[1]
 seed = int(sys.argv[2])
-sumoBinary = checkBinary('sumo-gui')
+sumoBinary = checkBinary('sumo')
 ###################
 
 
