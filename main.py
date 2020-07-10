@@ -47,6 +47,7 @@ from IntersectionManager import IntersectionManager
 car_dst_dict = dict()
 car_status_dict = dict()
 car_enter_time = dict()
+car_travel_time = dict()
 
 # Creating variables for theads
 car_src_dict = dict()
@@ -149,7 +150,7 @@ def run():
                     del_car_id_list.append(car_id)
 
             for car_id in del_car_id_list:
-                print(car_id, simu_step-car_enter_time[car_id])
+                car_travel_time[car_id] = simu_step-car_enter_time[car_id]
                 del car_dst_dict[car_id]
                 del car_enter_time[car_id]
                     
@@ -233,15 +234,9 @@ def run():
         traceback.print_exc()
 
 
-    print(sys.argv[1], int(sys.argv[2]), int(sys.argv[3]))
-
-    # Print out the measurements
-    #print("Average total delay: ", total_delays/car_num)
-    #print("Average delay by scheduling: ", total_delays_by_sche/car_num)
-    print(intersection_manager.total_delays/intersection_manager.car_num, intersection_manager.total_delays_by_sche/intersection_manager.car_num, intersection_manager.car_num)
-
-    print("avg_fuel = ",intersection_manager.total_fuel_consumption/intersection_manager.fuel_consumption_count)
-
+    print("Average delay: %f" % sum(car_travel_time)/len(car_travel_time))
+    print("Car number: %i" % len(car_travel_time))
+    print("Arrival rate: %f" % len(car_travel_time)/600)
     sys.stdout.flush()
 
     traci.close()
