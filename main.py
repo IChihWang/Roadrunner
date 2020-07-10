@@ -30,6 +30,7 @@ import config as cfg
 
 from gen_route import generate_routefile
 import socket
+import json
 
 
 
@@ -51,6 +52,8 @@ car_enter_time = dict()
 car_src_dict = dict()
 car_path_dict = dict() # (car_id, path(node_turn_dict) )
 send_str = ""
+
+src_dst_dict = None     # Load from the file (car_id, (src_idx, dst_idx))
 ###################
 
 
@@ -92,15 +95,11 @@ def run():
                 if car_id not in car_dst_dict:
                     car_status_dict[car_id] = "NEW"
                     
-                    # Get source
-                    sink_id = traci.vehicle.getRoadID(car_id) # The route ID is the sink ID in MiniVnet
-                    src_node_idx = sink_id
+                    # Get source & destination
                     
-                    # Genterate destination
-                    dst_node_idx = src_node_idx
-                    while src_node_idx == dst_node_idx:
-                        dst_node_idx = random.randrange(0,cfg.INTER_SIZE*4)
+                    src_node_idx, dst_node_idx = src_dst_dict[car_id]
                     car_dst_dict[car_id] = dst_node_idx
+                    
                     
                     # Record entering time
                     car_enter_time[car_id] = simu_step
@@ -326,8 +325,8 @@ def get_options():
 if __name__ == "__main__":
     print("Usage: python code.py <arrival_rate (0~1.0)> <seed> <schedular>")
     
-    #HOST, PORT = "128.238.147.124", 9999
-    HOST, PORT = "localhost", 9999
+    #HOST, PORT = "128.238.147.124", 9909
+    HOST, PORT = "localhost", 9909
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect((HOST, PORT))
 
@@ -347,19 +346,26 @@ if __name__ == "__main__":
     os.system("bash gen_intersection/gen_data.sh " + str(cfg.LANE_NUM_PER_DIRECTION))
 
     # 1. Generate the route file for this simulation
-    arrival_rate = float(sys.argv[1])
-    generate_routefile(arrival_rate)
-
-
-
+    arrival_rate = sys.argv[1]
+    #generate_routefile(arrival_rate)
+    
+    
+    # Load from the file
+    src_dst_file_name = "%i_%s_%i_src_dst.json" % (cfg.INTER_SIZE, arrival_rate, seed)
+    with open('data/routes/'+src_dst_file_name) as json_file:
+        src_dst_dict = json.load(json_file)
 
 
     try:
         # 3. This is the normal way of using traci. sumo is started as a subprocess and then the python script connects and runs
 
-        traci.start([sumoBinary, "-c", "data/icacc+.sumocfg",
+        net_name = "lane%iby%i.net.xml" % (cfg.INTER_SIZE, cfg.INTER_SIZE)
+        route_name = "%i_%s_%i.rou.xml" % (cfg.INTER_SIZE, arrival_rate, seed)
+        traci.start([sumoBinary, "-c", "data/UDTA.sumocfg",
                                  "--tripinfo-output", "tripinfo.xml","--step-length", str(cfg.TIME_STEP),
-                                 "--collision.mingap-factor", "0"])
+                                 "--collision.mingap-factor", "0",
+                                 "-n", "data/net/" + net_name,
+                                 "-r", "data/routes/" + route_name])
 
 
         

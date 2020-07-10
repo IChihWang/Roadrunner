@@ -4,7 +4,6 @@
 
     <input>
         <net-file value="lane2by2.net.xml"/>
-        <route-files value="icacc+.rou.xml"/>
     </input>
     
     <processing>
