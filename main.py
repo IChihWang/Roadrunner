@@ -46,15 +46,17 @@ sumoBinary = checkBinary('sumo')
 ###################
 
 
-def run():
+def run(path_dict):
 
     """execute the TraCI control loop"""
     simu_step = 0
-    
-    
+
+
     car_dst_dict = dict()
     car_enter_time = dict()
-    
+    car_intersection_record = dict()
+    car_path_idx_record = dict()
+
     travel_time_list = []
 
     # Create a list with intersection managers
@@ -69,44 +71,53 @@ def run():
 
     try:
         while traci.simulation.getMinExpectedNumber() > 0:
-    
+
             #Get timestamp
             TiStamp1 = time.time()
-            
+
             if (simu_step*10)//1/10.0 == 600:
                 break
-                
+
             traci.simulationStep()
             all_c = traci.vehicle.getIDList()
             # Update the position of each car
             for car_id in all_c:
-                
+                car_path = path_dict[car_id]
+
                 # Generate source/destination
                 if car_id not in car_dst_dict:
-                    
+
                     # Get source & destination
-                    
+
                     src_node_idx, dst_node_idx = src_dst_dict[car_id]
                     car_dst_dict[car_id] = dst_node_idx
-                    
-                    
+
+
                     # Record entering time
                     car_enter_time[car_id] = simu_step
-            
-            
+                    car_path_idx_record[car_id] = -1
+                    car_intersection_record[car_id] = None
+
+
                 lane_id = traci.vehicle.getLaneID(car_id)
-                
+
                 is_handled = False
                 for intersection_manager in intersection_manager_list:
                     if intersection_manager.check_in_my_region(lane_id):
+                        if intersection_manager != car_intersection_record[car_id]:
+                            car_intersection_record[car_id] = intersection_manager
+                            car_path_idx_record[car_id] += 1
+
                         is_handled = True
-                        car_turn = "S"  # by default
-                        
+                        car_turn = car_path[car_path_idx_record[car_id]]
                         data = intersection_manager.update_car(car_id, lane_id, simu_step, car_turn)
-                        
+
+
+                        break
+
                 if not is_handled:
                     traci.vehicle.setSpeed(car_id, cfg.MAX_SPEED)
-                    
+
             del_car_id_list = []
             for car_id in car_dst_dict:
                 if car_id not in all_c:
@@ -116,16 +127,16 @@ def run():
                 travel_time_list.append(simu_step-car_enter_time[car_id])
                 del car_dst_dict[car_id]
                 del car_enter_time[car_id]
-                
-                   
+
+
             for intersection_manager in intersection_manager_list:
                 intersection_manager.run(simu_step)
-                
-            
+
+
             simu_step += cfg.TIME_STEP
-            
-            
-                
+
+
+
     except Exception as e:
         traceback.print_exc()
 
@@ -142,7 +153,7 @@ def run():
 
     return (car_num, avg_travel_time)
 
-    
+
 def recursive_run(car_id_list, car_id_list_idx, path_dict):
     # Termination
     if car_id_list_idx == len(car_id_list):
@@ -154,13 +165,13 @@ def recursive_run(car_id_list, car_id_list_idx, path_dict):
                                  "-n", "data/net/" + net_name,
                                  "-r", "data/routes/" + route_name])
         print("Running simulation...")
-        car_num, avg_travel_time = run()
-        
+        car_num, avg_travel_time = run(path_dict)
+
         return (car_num, avg_travel_time)
-    
+
     car_id = car_id_list[car_id_list_idx]
     path_list = path_table[str(tuple(src_dst_dict[car_id]))]
-    
+
     optimal_travel_time = 99999999
     optimal_car_num = None
     for path in path_list:
@@ -169,7 +180,7 @@ def recursive_run(car_id_list, car_id_list_idx, path_dict):
         if avg_travel_time < optimal_travel_time:
             optimal_travel_time = avg_travel_time
             optimal_car_num = car_num
-            
+
     return (optimal_car_num, optimal_travel_time)
 
 
@@ -179,24 +190,24 @@ def recursive_run(car_id_list, car_id_list_idx, path_dict):
 # Main function
 if __name__ == "__main__":
     print("Usage: python code.py <arrival_rate (0~1.0)> <seed>")
-    
-    
+
+
     random.seed(seed)  # make tests reproducible
     numpy.random.seed(seed)
 
-    
+
     # Load from the file
     src_dst_file_name = "%i_%s_%i_src_dst.json" % (cfg.INTER_SIZE, arrival_rate, seed)
     with open('data/routes/'+src_dst_file_name) as json_file:
         src_dst_dict = json.load(json_file)
-        
+
     car_id_list = list(src_dst_dict.keys())
     path_table = json.load(open('data/path/%iX%i.json'%(cfg.INTER_SIZE, cfg.INTER_SIZE)))
-    
+
     path_dict = dict()
     car_id_list_idx = 0
     optimal_car_num, optimal_travel_time = recursive_run(car_id_list, car_id_list_idx, path_dict)
-    
+
     print("Optimal travel time: %f" % optimal_travel_time)
     print("Car number: %i" % optimal_car_num)
     print("Arrival rate: %f" % optimal_car_num/600.0)
