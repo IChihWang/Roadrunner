@@ -424,13 +424,16 @@ class IntersectionManager:
 ##########################
 # Scheduling thread that handles scheduling and update the table for lane advising
 def Scheduling(lane_advisor, sched_car, n_sched_car, advised_n_sched_car, cc_list, car_list):
+    '''
     if int(sys.argv[3]) == 0:
         IcaccPlus(sched_car, n_sched_car)
     elif int(sys.argv[3]) == 1:
         Icacc(sched_car, n_sched_car)
     elif int(sys.argv[3]) == 2:
         Fcfs(sched_car, n_sched_car)
+    '''
 
+    IcaccPlus(sched_car, n_sched_car)
 
     lane_advisor.updateTableFromCars(n_sched_car, advised_n_sched_car)
 

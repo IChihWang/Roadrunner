@@ -46,9 +46,6 @@ from IntersectionManager import IntersectionManager
 
 car_dst_dict = dict()
 car_status_dict = dict()
-car_enter_time = dict()
-car_travel_time = dict()
-
 # Creating variables for theads
 car_src_dict = dict()
 car_path_dict = dict() # (car_id, path(node_turn_dict) )
@@ -63,6 +60,11 @@ def run():
     global send_str
     global car_src_dict
     global car_status_dict
+    
+    
+    car_enter_time = dict()
+    car_travel_time = []
+
 
     """execute the TraCI control loop"""
     simu_step = 0
@@ -83,7 +85,7 @@ def run():
             #Get timestamp
             TiStamp1 = time.time()
             
-            if (simu_step*10)//1/10.0 == 500:
+            if (simu_step*10)//1/10.0 == 600:
                 break
                 
             traci.simulationStep()
@@ -150,7 +152,7 @@ def run():
                     del_car_id_list.append(car_id)
 
             for car_id in del_car_id_list:
-                car_travel_time[car_id] = simu_step-car_enter_time[car_id]
+                car_travel_time.append(simu_step-car_enter_time[car_id])
                 del car_dst_dict[car_id]
                 del car_enter_time[car_id]
                     
@@ -228,15 +230,14 @@ def run():
                 pass
             else:
                 #time.sleep(deltaT-TiStamp2)
-                pass
-                
+                pass     
     except Exception as e:
         traceback.print_exc()
 
 
-    print("Average delay: %f" % sum(car_travel_time)/len(car_travel_time))
-    print("Car number: %i" % len(car_travel_time))
-    print("Arrival rate: %f" % len(car_travel_time)/600)
+    print("Average delay: %f" % (sum(car_travel_time)/len(car_travel_time)))
+    print("Car number: %i" % (len(car_travel_time)))
+    print("Arrival rate: %f" % (len(car_travel_time)/600))
     sys.stdout.flush()
 
     traci.close()
@@ -318,7 +319,9 @@ def get_options():
 ###########################
 # Main function
 if __name__ == "__main__":
-    print("Usage: python code.py <arrival_rate (0~1.0)> <seed> <schedular>")
+    print("Usage: python code.py <arrival_rate (0~1.0)> <seed> <grid size>")
+    
+    cfg.INTER_SIZE = int(sys.argv[3])
     
     #HOST, PORT = "128.238.147.124", 9909
     HOST, PORT = "localhost", 9909
@@ -328,6 +331,7 @@ if __name__ == "__main__":
     seed = int(sys.argv[2])
     random.seed(seed)  # make tests reproducible
     numpy.random.seed(seed)
+    
 
     options = get_options()
 
@@ -381,8 +385,8 @@ if __name__ == "__main__":
                                  
         # 4. Start running SUMO
         run()
-    except:
-        None
+    except Exception as e:
+        traceback.print_exc()
 
     try:
         send_lock.release()

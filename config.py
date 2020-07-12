@@ -1,5 +1,6 @@
 LANE_NUM_PER_DIRECTION = 3
-INTER_SIZE = 2 # 2 by 2
+#INTER_SIZE = 2 # 2 by 2
+global INTER_SIZE
 
 
 
