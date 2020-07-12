@@ -46,6 +46,8 @@ from IntersectionManager import IntersectionManager
 
 car_dst_dict = dict()
 car_status_dict = dict()
+car_intersection_id_dict = dict()
+
 # Creating variables for theads
 car_src_dict = dict()
 car_path_dict = dict() # (car_id, path(node_turn_dict) )
@@ -85,7 +87,7 @@ def run():
             #Get timestamp
             TiStamp1 = time.time()
             
-            if (simu_step*10)//1/10.0 == 600:
+            if (simu_step*10)//1/10.0 == 100:
                 break
                 
             traci.simulationStep()
@@ -109,8 +111,6 @@ def run():
             
             
                 lane_id = traci.vehicle.getLaneID(car_id)
-                    # TODO: send request
-                    # TODO time lower bound
                 
                 is_handled = False
                 for intersection_manager in intersection_manager_list:
@@ -127,6 +127,8 @@ def run():
                             time_offset = data[1]
                             intersection_id = data[2]
                             intersection_from_direction = data[3]
+                            
+                            car_intersection_id_dict[car_id] = intersection_id
                             
                             server_send_str += car_id + ","
                             
@@ -149,6 +151,7 @@ def run():
                     car_status_dict[car_id] = "Exit"
                     del car_path_dict[car_id]
                     del car_src_dict[car_id]
+                    del car_intersection_id_dict[car_id]
                     del_car_id_list.append(car_id)
 
             for car_id in del_car_id_list:
@@ -185,7 +188,6 @@ def run():
                 # Parse data to path_dict
                 data = data[0:-2]
                 cars_data_list = data.split(";")
-                
                 if len(data) > 0:
                 
                     for car_data in cars_data_list:
@@ -195,23 +197,34 @@ def run():
                         nodes_turn = route_str.split("/")
                         
                         node_turn_dict = dict()
-                        for node_turn in nodes_turn:
-                            intersection_id, turn = node_turn.split(":")
-                            node_turn_dict[intersection_id] = turn
+                        
+                        if len(route_str)>0:
+                            for node_turn in nodes_turn:
+                                intersection_id, turn = node_turn.split(":")
+                                node_turn_dict[intersection_id] = turn
 
-                        if (car_id not in car_path_dict) or (car_src_dict[car_id] in node_turn_dict):
-                            # Update the new path
-                            #print(car_id, "Update new path", (car_id not in car_path_dict))
+                                
+                            if (car_id in car_path_dict):
+                                current_intersection = car_intersection_id_dict[car_id]
+                                node_turn_dict[current_intersection] = car_path_dict[car_id][current_intersection]
+                            
                             car_path_dict[car_id] = node_turn_dict
-                        else:
-                            # The car and expected path is not synchronized
-                            if car_status_dict[car_id] == "OLD":
-                                # Force reroute
-                                car_status_dict[car_id] = "NEW"
-                                #print(car_id, "Force reroute")
-                    
-                    
-                    
+                            
+                            '''
+                            # Handle the non synchronize case
+                            # Concept: if source node change
+                            
+                            if (car_id not in car_path_dict) or (car_src_dict[car_id] in node_turn_dict):
+                                # Update the new path
+                                #print(car_id, "Update new path", (car_id not in car_path_dict))
+                                car_path_dict[car_id] = node_turn_dict
+                            else:
+                                # The car and expected path is not synchronized
+                                if car_status_dict[car_id] == "OLD":
+                                    # Force reroute
+                                    car_status_dict[car_id] = "NEW"
+                                    #print(car_id, "Force reroute")
+                            '''
                     
             
 
@@ -239,67 +252,11 @@ def run():
     print("Car number: %i" % (len(car_travel_time)))
     print("Arrival rate: %f" % (len(car_travel_time)/600))
     sys.stdout.flush()
+    sock.sendall("END@")
 
+    
     traci.close()
-    send_lock.release()
 
-
-    
-    
-def server_handler(sock):
-    is_continue = True
-    global car_path_dict
-    global car_src_dict
-    global send_str
-    global car_status_dict
-    
-    try:
-        while is_continue:
-        
-            # Send request
-            send_lock.acquire() # Use the lock to block here
-            string_write_lock.acquire()
-            sock.sendall(send_str + "@")
-            string_write_lock.release()
-            
-            # Receive the result
-            data = ""
-            while len(data) == 0 or data[-1] != "@":
-                data += sock.recv(8192)
-                
-            if data == None:
-                is_continue = False
-            
-            # Parse data to path_dict
-            data = data[0:-2]
-            cars_data_list = data.split(";")
-            
-            if len(data) > 0:
-            
-                for car_data in cars_data_list:
-                    car_data_list = car_data.split(",")
-                    car_id = car_data_list[0]
-                    route_str = car_data_list[1][0:-1]
-                    nodes_turn = route_str.split("/")
-                    
-                    node_turn_dict = dict()
-                    for node_turn in nodes_turn:
-                        intersection_id, turn = node_turn.split(":")
-                        node_turn_dict[intersection_id] = turn
-
-                    if (car_id not in car_path_dict) or (car_src_dict[car_id] in node_turn_dict):
-                        # Update the new path
-                        #print(car_id, "Update new path", (car_id not in car_path_dict))
-                        car_path_dict[car_id] = node_turn_dict
-                    else:
-                        # The car and expected path is not synchronized
-                        if car_status_dict[car_id] == "OLD":
-                            # Force reroute
-                            car_status_dict[car_id] = "NEW"
-                            #print(car_id, "Force reroute")
-           
-    except Exception as e:
-        traceback.print_exc()
     
 
 
@@ -368,9 +325,6 @@ if __name__ == "__main__":
 
 
         
-        string_write_lock = threading.Lock()
-        send_lock = threading.Lock()
-        send_lock.acquire()
         
         # Echo and tell the size of the network
         init_message = "My_grid_size:" + str(cfg.INTER_SIZE)
@@ -388,8 +342,4 @@ if __name__ == "__main__":
     except Exception as e:
         traceback.print_exc()
 
-    try:
-        send_lock.release()
-    except:
-        None
     sock.close()
