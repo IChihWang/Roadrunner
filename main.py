@@ -31,6 +31,7 @@ import config as cfg
 from gen_route import generate_routefile
 import socket
 import json
+import csv
 
 
 
@@ -70,6 +71,8 @@ def run():
 
     """execute the TraCI control loop"""
     simu_step = 0
+    simulation_time = 100
+    total_car_num = 0
 
     # Create a list with intersection managers
     intersection_manager_list = []
@@ -87,7 +90,7 @@ def run():
             #Get timestamp
             TiStamp1 = time.time()
             
-            if (simu_step*10)//1/10.0 == 100:
+            if (simu_step*10)//1/10.0 == simulation_time:
                 break
                 
             traci.simulationStep()
@@ -108,6 +111,8 @@ def run():
                     
                     # Record entering time
                     car_enter_time[car_id] = simu_step
+                    
+                    total_car_num += 1
             
             
                 lane_id = traci.vehicle.getLaneID(car_id)
@@ -248,14 +253,27 @@ def run():
         traceback.print_exc()
 
 
-    print("Average delay: %f" % (sum(car_travel_time)/len(car_travel_time)))
-    print("Car number: %i" % (len(car_travel_time)))
-    print("Arrival rate: %f" % (len(car_travel_time)/600))
+    avg_travel_time = (sum(car_travel_time)/len(car_travel_time))
+    served_car_num = (len(car_travel_time))
+    actual_departure_rate = (float(served_car_num)/simulation_time)
+    actual_arrival_rate = (float(total_car_num)/simulation_time)
+    #print("Average delay: %f" % avg_travel_time)
+    #print("Car number: %i" % (len(car_travel_time)))
+    #print("Arrival rate: %f" % (len(car_travel_time)/600))
     sys.stdout.flush()
     sock.sendall("END@")
 
-    
     traci.close()
+    
+    with open('../result/traveling_time.csv', 'a') as csvfile:
+        file_writer = csv.writer(csvfile, lineterminator='\n')
+        to_write_list = [sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6], sys.argv[7]]
+        to_write_list.append(avg_travel_time)
+        to_write_list.append(total_car_num)
+        to_write_list.append(actual_arrival_rate)
+        to_write_list.append(served_car_num)
+        to_write_list.append(actual_departure_rate)
+        file_writer.writerow(to_write_list)
 
     
 
@@ -277,6 +295,7 @@ def get_options():
 # Main function
 if __name__ == "__main__":
     print("Usage: python code.py <arrival_rate (0~1.0)> <seed> <grid size>")
+    sys.argv[7]
     
     cfg.INTER_SIZE = int(sys.argv[3])
     
