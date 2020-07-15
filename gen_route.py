@@ -42,7 +42,7 @@ def generate_routefile(arrival_rate):
         
             y_idx = 1
             route_id = 0*cfg.INTER_SIZE + (x_idx-1)
-            src_lane = "%3.3o"%(y_idx) + "_" + "%3.3o"%(x_idx) + "_1"
+            src_lane = "00%i"%(y_idx) + "_" + "00%i"%(x_idx) + "_1"
             route_str += "\t<route id=\""
             route_str += str(route_id)
             route_str += "\" edges=\""
@@ -52,7 +52,7 @@ def generate_routefile(arrival_rate):
             
             y_idx = cfg.INTER_SIZE
             route_id = 1*cfg.INTER_SIZE + (x_idx-1)
-            src_lane = "%3.3o"%(x_idx) + "_" + "%3.3o"%(y_idx) + "_2"
+            src_lane = "00%i"%(x_idx) + "_" + "00%i"%(y_idx) + "_2"
             route_str += "\t<route id=\""
             route_str += str(route_id)
             route_str += "\" edges=\""
@@ -63,7 +63,7 @@ def generate_routefile(arrival_rate):
             
             y_idx = cfg.INTER_SIZE
             route_id = 2*cfg.INTER_SIZE + (cfg.INTER_SIZE - x_idx)
-            src_lane = "%3.3o"%(y_idx) + "_" + "%3.3o"%(x_idx) + "_3"
+            src_lane = "00%i"%(y_idx) + "_" + "00%i"%(x_idx) + "_3"
             route_str += "\t<route id=\""
             route_str += str(route_id)
             route_str += "\" edges=\""
@@ -73,7 +73,7 @@ def generate_routefile(arrival_rate):
             
             y_idx = 1
             route_id = 3*cfg.INTER_SIZE + (cfg.INTER_SIZE - x_idx)
-            src_lane = "%3.3o"%(x_idx) + "_" + "%3.3o"%(y_idx) + "_4"
+            src_lane = "00%i"%(x_idx) + "_" + "00%i"%(y_idx) + "_4"
             route_str += "\t<route id=\""
             route_str += str(route_id)
             route_str += "\" edges=\""
@@ -103,9 +103,10 @@ def generate_routefile(arrival_rate):
         
 def generate_routefile_with_src_dst(inter_size, arrival_rate, rand_seed, time_steps):
 
+    path = "data/routes/"
     file_name = str(inter_size) + "_" + str(arrival_rate) + "_" + str(rand_seed)
-    routes = open(file_name + ".rou.xml", "w")
-    src_dst = open(file_name + "_src_dst" + ".json", "w")
+    routes = open(path + file_name + ".rou.xml", "w")
+    src_dst = open(path + file_name + "_src_dst" + ".json", "w")
     
     print("<routes>\n", file=routes)
 
@@ -123,7 +124,7 @@ def generate_routefile_with_src_dst(inter_size, arrival_rate, rand_seed, time_st
     
         y_idx = 1
         route_id = 0*inter_size + (x_idx-1)
-        src_lane = "%3.3o"%(y_idx) + "_" + "%3.3o"%(x_idx) + "_1"
+        src_lane = "00%i"%(y_idx) + "_" + "00%i"%(x_idx) + "_1"
         route_str += "\t<route id=\""
         route_str += str(route_id)
         route_str += "\" edges=\""
@@ -131,9 +132,11 @@ def generate_routefile_with_src_dst(inter_size, arrival_rate, rand_seed, time_st
         route_str += "\"/>\n"
         route_list.append(str(route_id))
         
+        
         y_idx = inter_size
         route_id = 1*inter_size + (x_idx-1)
-        src_lane = "%3.3o"%(x_idx) + "_" + "%3.3o"%(y_idx) + "_2"
+        
+        src_lane = "00%i"%(x_idx) + "_" + "00%i"%(y_idx) + "_2"
         route_str += "\t<route id=\""
         route_str += str(route_id)
         route_str += "\" edges=\""
@@ -144,7 +147,7 @@ def generate_routefile_with_src_dst(inter_size, arrival_rate, rand_seed, time_st
         
         y_idx = inter_size
         route_id = 2*inter_size + (inter_size - x_idx)
-        src_lane = "%3.3o"%(y_idx) + "_" + "%3.3o"%(x_idx) + "_3"
+        src_lane = "00%i"%(y_idx) + "_" + "00%i"%(x_idx) + "_3"
         route_str += "\t<route id=\""
         route_str += str(route_id)
         route_str += "\" edges=\""
@@ -154,7 +157,7 @@ def generate_routefile_with_src_dst(inter_size, arrival_rate, rand_seed, time_st
         
         y_idx = 1
         route_id = 3*inter_size + (inter_size - x_idx)
-        src_lane = "%3.3o"%(x_idx) + "_" + "%3.3o"%(y_idx) + "_4"
+        src_lane = "00%i"%(x_idx) + "_" + "00%i"%(y_idx) + "_4"
         route_str += "\t<route id=\""
         route_str += str(route_id)
         route_str += "\" edges=\""
@@ -179,7 +182,7 @@ def generate_routefile_with_src_dst(inter_size, arrival_rate, rand_seed, time_st
                 src_node_idx = int(route)
                 # Genterate destination
                 dst_node_idx = src_node_idx
-                while src_node_idx == dst_node_idx:
+                while (src_node_idx-dst_node_idx)%(cfg.INTER_SIZE*4) < cfg.INTER_SIZE-1 or (dst_node_idx-src_node_idx)%(cfg.INTER_SIZE*4) < cfg.INTER_SIZE-1:
                     dst_node_idx = random.randrange(0,cfg.INTER_SIZE*4)
                     
                 car_src_dst_dict["car_"+str(vehNr)] = (src_node_idx, dst_node_idx)

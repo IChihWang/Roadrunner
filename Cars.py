@@ -134,6 +134,8 @@ class Car:
             if T > max_total_time:
                 self.CC_auto_stop_n_go = True
                 slow_down_speed = 0.001
+            elif T < 0:
+                slow_down_speed = cfg.MAX_SPEED
 
             else:
                 x1 = self.position - (cfg.CCZ_ACC_LEN+cfg.CCZ_DEC2_LEN)
@@ -171,7 +173,11 @@ class Car:
                 self.CC_state = "Entering_accerlerate"
 
                 traci.vehicle.setMaxSpeed(self.ID, cfg.MAX_SPEED)
-                dec_time = (self.position-cfg.CCZ_DEC2_LEN) / ((self.CC_slow_speed+cfg.MAX_SPEED)/2)
+                dec_time = None
+                if self.position>cfg.CCZ_DEC2_LEN:
+                    dec_time = (self.position-cfg.CCZ_DEC2_LEN) / ((self.CC_slow_speed+cfg.MAX_SPEED)/2)
+                else:
+                    dec_time = self.position / ((self.CC_slow_speed+cfg.MAX_SPEED)/2)
                 self.CC_slowdown_timer = dec_time
                 traci.vehicle.slowDown(self.ID, cfg.MAX_SPEED, dec_time)
 
@@ -283,7 +289,7 @@ class Car:
             else:
                 return traci.vehicle.getSpeed(self.CC_front_car.ID) + traci.vehicle.getAcceleration(self.CC_front_car.ID)*cfg.TIME_STEP
         else:
-            return None
+            return traci.vehicle.getSpeed(self.ID) + traci.vehicle.getAcceleration(self.ID)*cfg.TIME_STEP
 
 
     # Compute the shifts
@@ -299,7 +305,7 @@ class Car:
             diff_distance = self.position - self.CC_front_car.position
             if (diff_distance - catch_up_distance - self.CC_front_car.length) < (cfg.HEADWAY):
                 # The car is going to catch up the front car
-                shifting_end = self.CC_front_car.CC_shift_end + front_car.length + cfg.HEADWAY
+                shifting_end = self.CC_front_car.CC_shift_end + self.CC_front_car.length + cfg.HEADWAY
                 is_catching_up_front = True
             self.CC_shift_end = shifting_end
 

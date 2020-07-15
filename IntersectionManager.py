@@ -57,14 +57,18 @@ class IntersectionManager:
     def check_in_my_region(self, lane_id):
         if lane_id in self.in_lanes:
             return True
-        elif self.ID in lane_id:
-            return True
         else:
-            return False
+            lane_data = lane_id.split("_")
+            lane_id_short = lane_data[0] + "_" + lane_data[1]
+            if lane_id_short == self.ID:
+                return True
+            else:
+                return False
             
     def change_turning(self, car_id, car_turn, intersection_dir):
-        x_idx = int(self.ID[0:3])
-        y_idx = int(self.ID[4:7])
+        id_data = self.ID.split('_')
+        x_idx = int(id_data[0])
+        y_idx = int(id_data[1])
 
         target_dir = None
 
@@ -88,7 +92,7 @@ class IntersectionManager:
             x_idx = x_idx
             y_idx = y_idx + 1
 
-        intersection_manager_id = "%3.3o"%(x_idx) + "_" + "%3.3o"%(y_idx)
+        intersection_manager_id = "00%i"%(x_idx) + "_" + "00%i"%(y_idx)
 
         target_edge = intersection_manager_id + "_" + str(target_dir)
         traci.vehicle.changeTarget(car_id, target_edge)
@@ -98,9 +102,11 @@ class IntersectionManager:
 
     def update_car(self, car_id, lane_id, simu_step, car_turn):
         if lane_id in self.in_lanes:
-            lane = ((4-int(lane_id[8]))*cfg.LANE_NUM_PER_DIRECTION) + (cfg.LANE_NUM_PER_DIRECTION-int(lane_id[10])-1)
+            lane_data = lane_id.split("_")
+            lane_direction = int(lane_data[2])
+            lane_sub_idx = int(lane_data[3])
+            lane = ((4-lane_direction))*cfg.LANE_NUM_PER_DIRECTION + (cfg.LANE_NUM_PER_DIRECTION-lane_sub_idx-1)
 
-            
             
             # Add car if the car is not in the list yet
             if car_id not in self.car_list:
@@ -124,8 +130,7 @@ class IntersectionManager:
                 #new_car.turning = random.choice(['R', 'S', 'L'])
                 #new_car.turning = car_turn
 
-                intersection_dir = int(lane_id[8])
-                self.change_turning(car_id, car_turn, intersection_dir)
+                self.change_turning(car_id, car_turn, lane_direction)
                 
             # Set the position of each cars
             #position = cfg.AZ_LEN + cfg.PZ_LEN + cfg.GZ_LEN+ cfg.BZ_LEN + cfg.CCZ_LEN - traci.vehicle.getLanePosition(car_id)
@@ -156,9 +161,8 @@ class IntersectionManager:
             
             # Not yet enter Roadrunner, still able to change turn
             if position > cfg.TOTAL_LEN:
-                intersection_dir = int(lane_id[8])
                 self.car_list[car_id].turning = car_turn
-                self.change_turning(car_id, car_turn, intersection_dir)
+                self.change_turning(car_id, car_turn, lane_direction)
             
             
             
@@ -183,13 +187,13 @@ class IntersectionManager:
                     intersection_from_direction = (direction+2)%4
                     intersection_idx_list = self.ID.split("_")
                     if intersection_from_direction == 2:
-                        intersection_idx_list[1] = "%3.3o"%(int(intersection_idx_list[1])-1)
+                        intersection_idx_list[1] = "00%i"%(int(intersection_idx_list[1])-1)
                     elif intersection_from_direction == 3:
-                        intersection_idx_list[0] = "%3.3o"%(int(intersection_idx_list[0])+1)
+                        intersection_idx_list[0] = "00%i"%(int(intersection_idx_list[0])+1)
                     elif intersection_from_direction == 0:
-                        intersection_idx_list[1] = "%3.3o"%(int(intersection_idx_list[1])+1)
+                        intersection_idx_list[1] = "00%i"%(int(intersection_idx_list[1])+1)
                     elif intersection_from_direction == 1:
-                        intersection_idx_list[0] = "%3.3o"%(int(intersection_idx_list[0])-1)
+                        intersection_idx_list[0] = "00%i"%(int(intersection_idx_list[0])-1)
                         
                     intersection_id = intersection_idx_list[0] + "_" + intersection_idx_list[1]
             
@@ -229,6 +233,7 @@ class IntersectionManager:
                     intersection_id = self.ID
                     
             length = self.car_list[car_id].length
+            
             
             return (length, time_offset, intersection_id, int(intersection_from_direction))
         
@@ -354,11 +359,15 @@ class IntersectionManager:
                 traci.vehicle.setLaneChangeMode(car_id, 0)
 
                 lane_id = traci.vehicle.getLaneID(car_id)
-                lane = ((4-int(lane_id[8]))*cfg.LANE_NUM_PER_DIRECTION) + (cfg.LANE_NUM_PER_DIRECTION-int(lane_id[10])-1)
+                lane_data = lane_id.split("_")
+                lane_direction = int(lane_data[2])
+                lane_sub_idx = int(lane_data[3])
+                lane = (4-lane_direction)*cfg.LANE_NUM_PER_DIRECTION + (cfg.LANE_NUM_PER_DIRECTION-lane_sub_idx-1)
+                
                 self.car_list[car_id].lane = lane
 
                 # Stay on its lane
-                traci.vehicle.changeLane(car_id, int(lane_id[10]), 10.0)
+                traci.vehicle.changeLane(car_id, lane_sub_idx, 10.0)
 
 
                 car.zone_state = "PZ_set"
