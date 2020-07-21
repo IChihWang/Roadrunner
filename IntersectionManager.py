@@ -8,6 +8,7 @@ import threading
 from Cars import Car
 from milp import Icacc, IcaccPlus, Fcfs, FixedSignal
 from LaneAdviser import LaneAdviser
+import csv
 
 
 class IntersectionManager:
@@ -42,7 +43,9 @@ class IntersectionManager:
 
 
         self.set_round_lane()
-
+        
+        self.delay_record_lane = [[] for i in range(4*cfg.LANE_NUM_PER_DIRECTION)]
+        self.arrive_car_num = 0
 
     def set_round_lane(self):
         for idx in range(1,5):
@@ -66,6 +69,7 @@ class IntersectionManager:
                 new_car = Car(car_id, length, lane, turning)
                 new_car.Enter_T = simu_step - (traci.vehicle.getLanePosition(car_id))/cfg.MAX_SPEED
                 self.car_list[car_id] = new_car
+                self.arrive_car_num += 1
 
             # Set the position of each cars
             position = cfg.AZ_LEN + cfg.PZ_LEN + cfg.GZ_LEN+ cfg.BZ_LEN + cfg.CCZ_LEN - traci.vehicle.getLanePosition(car_id)
@@ -181,9 +185,18 @@ class IntersectionManager:
                     traci.vehicle.setColor(n_sched_car[c_idx].ID, (100,250,92))
                     n_sched_car[c_idx].D = None
 
-                self.scheduling_thread = threading.Thread(target = Scheduling, args = (self.lane_advisor, sched_car, n_sched_car, advised_n_sched_car, self.cc_list, self.car_list))
-                self.scheduling_thread.start()
-
+                #self.scheduling_thread = threading.Thread(target = Scheduling, args = (self.lane_advisor, sched_car, n_sched_car, advised_n_sched_car, self.cc_list, self.car_list, simu_step))
+                #self.scheduling_thread.start()
+                Scheduling(self.lane_advisor, sched_car, n_sched_car, advised_n_sched_car, self.cc_list, self.car_list)
+                
+                n_car_in_lane = [[] for i in range(4*cfg.LANE_NUM_PER_DIRECTION)]
+                for car in n_sched_car:
+                    n_car_in_lane[car.lane].append(car.D)
+                    
+                for idx in range(4*cfg.LANE_NUM_PER_DIRECTION):
+                    if len(n_car_in_lane[idx]) >0:
+                        delay_on_lane = sum(n_car_in_lane[idx])/len(n_car_in_lane[idx])
+                        self.delay_record_lane[idx].append((simu_step, delay_on_lane))
 
                 self.schedule_period_count = 0
 

@@ -29,6 +29,7 @@ import traceback
 import config as cfg
 
 from gen_route import generate_routefile
+import csv
 
 
 # For debug
@@ -54,7 +55,7 @@ def run():
     try:
         while traci.simulation.getMinExpectedNumber() > 0:
 
-            if (simu_step*10)//1/10.0 == 200:
+            if (simu_step*10)//1/10.0 == 1800:
                 break
 
 
@@ -69,6 +70,13 @@ def run():
             simu_step += cfg.TIME_STEP
     except Exception as e:
         traceback.print_exc()
+        
+    
+    for idx in range(4*cfg.LANE_NUM_PER_DIRECTION):
+        with open('delays_result/delay_lane_'+ sys.argv[1]+ '_' + str(idx) + '_' + str(intersection_manager.arrive_car_num) + '.csv', 'w+') as outfile:
+            writer = csv.writer(outfile,lineterminator='\n')
+            for data in intersection_manager.delay_record_lane[idx]:
+                writer.writerow(data)
 
 
     #debug_t = threading.Thread(target=debug_ring)
