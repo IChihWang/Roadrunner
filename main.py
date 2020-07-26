@@ -58,7 +58,7 @@ send_str = ""
 src_dst_dict = None     # Load from the file (car_id, (src_idx, dst_idx))
 ###################
 
-simulation_time = 3600
+simulation_time = 1200
 
 def worker(sock, server_send_str):
     global car_path_dict
@@ -142,7 +142,7 @@ def run():
             #Get timestamp
             TiStamp1 = time.time()
 
-            if (simu_step*10)//1/10.0 == simulation_time:
+            if (simu_step*10)//1/10.0 >= simulation_time:
                 break
 
             traci.simulationStep()
@@ -241,8 +241,6 @@ def run():
                 del car_dst_dict[car_id]
                 del car_enter_time[car_id]
 
-            if len(car_travel_time) >= 2000:
-                break
             
             # Early wait
             
@@ -295,13 +293,13 @@ def run():
     except Exception as e:
         traceback.print_exc()
 
-    car_travel_time = car_travel_time[500:]	# Skip first 500 cars
-    car_delay_time = car_delay_time[500:]
+    car_travel_time = car_travel_time	# Skip first 500 cars
+    car_delay_time = car_delay_time
     
     avg_travel_time = (sum(car_travel_time)/len(car_travel_time))
     avg_delay_time = (sum(car_delay_time)/len(car_delay_time))
     served_car_num = (len(car_travel_time))
-    actual_departure_rate = (float(served_car_num+500)/simu_step)
+    actual_departure_rate = (float(served_car_num)/simu_step)
     actual_arrival_rate = (float(total_car_num)/simu_step)
     #print("Average delay: %f" % avg_travel_time)
     #print("Car number: %i" % (len(car_travel_time)))
