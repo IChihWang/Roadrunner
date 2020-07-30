@@ -58,14 +58,14 @@ send_str = ""
 src_dst_dict = None     # Load from the file (car_id, (src_idx, dst_idx))
 ###################
 
-simulation_time = 1200
+simulation_time = 1800
 
 def worker(sock, server_send_str):
     global car_path_dict
     global car_path_to_write
     try:
         send_str = server_send_str
-        
+
         # Send request
         sock.sendall(send_str + "@")
 
@@ -142,8 +142,8 @@ def run():
             #Get timestamp
             TiStamp1 = time.time()
 
-            if (simu_step*10)//1/10.0 >= simulation_time:
-                break
+            #if (simu_step*10)//1/10.0 >= simulation_time:
+               # break
 
             traci.simulationStep()
             all_c = traci.vehicle.getIDList()
@@ -214,13 +214,13 @@ def run():
             for car_id in del_car_id_list:
                 travel_time = simu_step-car_enter_time[car_id]
                 car_travel_time.append(travel_time)
-                
-                
+
+
                 src_node_idx, dst_node_idx = src_dst_dict[car_id]
-                
+
                 dst_node_idx = (dst_node_idx - ((src_node_idx // cfg.INTER_SIZE) * cfg.INTER_SIZE)) % (cfg.INTER_SIZE*4)
                 src_node_idx = src_node_idx % cfg.INTER_SIZE
-                                
+
                 node_idx_diff = 0
                 if dst_node_idx < cfg.INTER_SIZE:
                     node_idx_diff = abs(src_node_idx-dst_node_idx)
@@ -233,25 +233,25 @@ def run():
                     src_node_idx = cfg.INTER_SIZE - src_node_idx -1
                     dst_node_idx = cfg.INTER_SIZE*4-dst_node_idx +2
                     node_idx_diff = dst_node_idx - src_node_idx -1
-                    
+
                 optimal_time = node_idx_diff*(float(cfg.TOTAL_LEN)/cfg.MAX_SPEED) + (float(cfg.TOTAL_LEN)*2/cfg.MAX_SPEED)*2
-                
+
                 car_delay_time.append(travel_time - optimal_time)
-                
+
                 del car_dst_dict[car_id]
                 del car_enter_time[car_id]
 
-            
+
             # Early wait
-            
+
             if (simu_step-1)%cfg.ROUTING_PERIOD < cfg.TIME_STEP:
                 if worker_thread != None:
                     worker_thread.join()
                     car_path_dict = car_path_to_write
-            
+
             # Send string to the server handler
             if simu_step%cfg.ROUTING_PERIOD < cfg.TIME_STEP:
-            
+
                 delete_key_list = []
                 for car_id, car_status in car_status_dict.items():
                     if car_status == "Exit":
@@ -262,15 +262,15 @@ def run():
 
                 for car_id in delete_key_list:
                     del car_status_dict[car_id]
-                    
+
                 worker_thread = threading.Thread(target=worker, args=(sock, server_send_str,))
                 worker_thread.start()
-                
+
                 worker_thread.join()
                 car_path_dict = car_path_to_write
-                    
-                    
-                
+
+
+
 
 
 
@@ -295,7 +295,7 @@ def run():
 
     car_travel_time = car_travel_time	# Skip first 500 cars
     car_delay_time = car_delay_time
-    
+
     avg_travel_time = (sum(car_travel_time)/len(car_travel_time))
     avg_delay_time = (sum(car_delay_time)/len(car_delay_time))
     served_car_num = (len(car_travel_time))
@@ -357,7 +357,7 @@ if __name__ == "__main__":
     options = get_options()
 
     # this script has been called from the command line. It will start sumo as a server, then connect and run
-    sumoBinary = checkBinary('sumo-gui')
+    sumoBinary = checkBinary('sumo')
 
     # 0. Generate the intersection information files
     #os.system("bash gen_intersection/gen_data.sh " + str(cfg.LANE_NUM_PER_DIRECTION))
