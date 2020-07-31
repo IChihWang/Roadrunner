@@ -28,7 +28,7 @@ import traceback
 
 import config as cfg
 
-from gen_route import generate_routefile_with_src_dst
+from gen_route import generate_routefile_with_src_dst, generate_routefile_with_src_dst_2
 import socket
 import json
 import csv
@@ -58,7 +58,7 @@ send_str = ""
 src_dst_dict = None     # Load from the file (car_id, (src_idx, dst_idx))
 ###################
 
-simulation_time = 1800
+simulation_time = 600
 
 def worker(sock, server_send_str):
     global car_path_dict
@@ -143,7 +143,7 @@ def run():
             TiStamp1 = time.time()
 
             #if (simu_step*10)//1/10.0 >= simulation_time:
-               # break
+                #break
 
             traci.simulationStep()
             all_c = traci.vehicle.getIDList()
