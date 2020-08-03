@@ -136,7 +136,6 @@ class Car:
                 slow_down_speed = 0.001
             elif T < 0:
                 slow_down_speed = cfg.MAX_SPEED
-
             else:
                 x1 = self.position - (cfg.CCZ_ACC_LEN+cfg.CCZ_DEC2_LEN)
                 x2 = cfg.CCZ_ACC_LEN
@@ -314,9 +313,6 @@ class Car:
         cc_shift_max = cfg.CCZ_LEN-self.CC_shift_end-2*cfg.CCZ_ACC_LEN
         if is_catching_up_front and self.CC_front_car.CC_slow_speed < cfg.MAX_SPEED:
             # First, assume that the two cars decelerate at the same time (So the car has this shift)
-            if self.CC_front_car.CC_shift == None or self.CC_front_pos_diff == None:
-                print(self.ID, self.CC_front_pos_diff, self.CC_front_car.CC_shift)
-                print(self.ID, self.CC_front_pos_diff, self.CC_front_car.CC_shift, self.CC_front_car.ID)
             cc_shift_max = self.CC_front_car.CC_shift - self.CC_front_pos_diff
 
             # The space between two cars (might < 0, because might smaller than HEADWAY)

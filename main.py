@@ -101,8 +101,9 @@ def worker(sock, server_send_str):
 
                     if (car_id in car_path_dict):
                         current_intersection = car_intersection_id_dict[car_id]
-                        node_turn_dict[current_intersection] = car_path_dict[car_id][current_intersection]
-
+                        if current_intersection in car_path_dict[car_id]:
+                            node_turn_dict[current_intersection] = car_path_dict[car_id][current_intersection]
+                            
                     car_path_to_write[car_id] = node_turn_dict
     except Exception as e:
         traceback.print_exc()
@@ -176,7 +177,11 @@ def run():
                         car_turn = "S"  # by default
 
                         if car_id in car_path_dict:
-                            car_turn = car_path_dict[car_id][intersection_manager.ID]
+                            if intersection_manager.ID in car_path_dict[car_id]:
+                                car_turn = car_path_dict[car_id][intersection_manager.ID]
+                            elif car_status_dict[car_id] == "OLD":
+                                print(car_id + " didn't find a proper path at " + intersection_manager.ID)
+                                car_status_dict[car_id] = "NEW"
 
                         data = intersection_manager.update_car(car_id, lane_id, simu_step, car_turn)
                         if data != None:

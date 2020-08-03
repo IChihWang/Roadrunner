@@ -64,7 +64,7 @@ class IntersectionManager:
                 return True
             else:
                 return False
-            
+
     def change_turning(self, car_id, car_turn, intersection_dir):
         id_data = self.ID.split('_')
         x_idx = int(id_data[0])
@@ -107,7 +107,8 @@ class IntersectionManager:
             lane_sub_idx = int(lane_data[3])
             lane = ((4-lane_direction))*cfg.LANE_NUM_PER_DIRECTION + (cfg.LANE_NUM_PER_DIRECTION-lane_sub_idx-1)
 
-            
+
+
             # Add car if the car is not in the list yet
             if car_id not in self.car_list:
                 # Gather the information of the new car
@@ -131,7 +132,7 @@ class IntersectionManager:
                 #new_car.turning = car_turn
 
                 self.change_turning(car_id, car_turn, lane_direction)
-                
+
             # Set the position of each cars
             #position = cfg.AZ_LEN + cfg.PZ_LEN + cfg.GZ_LEN+ cfg.BZ_LEN + cfg.CCZ_LEN - traci.vehicle.getLanePosition(car_id)
             lane_id = traci.vehicle.getLaneID(car_id)
@@ -157,27 +158,27 @@ class IntersectionManager:
 
             elif (self.car_list[car_id].zone == "BZ") and (position <= cfg.CCZ_LEN):
                 self.car_list[car_id].zone = "CCZ"
-                
-            
+
+
             # Not yet enter Roadrunner, still able to change turn
             if position > cfg.TOTAL_LEN:
                 self.car_list[car_id].turning = car_turn
                 self.change_turning(car_id, car_turn, lane_direction)
-            
-            
-            
+
+
+
             # Decide the time offset
             # On the road
             time_offset = None
             intersection_id = None              # After offset, which intersection/node
             intersection_from_direction = None
-            
+
             if self.car_list[car_id].zone == None:
                 # Not yet enter Roadrunner
                 diff_pos = position - cfg.TOTAL_LEN
                 time_offset = diff_pos/cfg.MAX_SPEED
-                
-               
+
+
                 # Start from next intersection
                 if time_offset <= cfg.ROUTING_PERIOD:
                     time_offset = None
@@ -194,9 +195,9 @@ class IntersectionManager:
                         intersection_idx_list[1] = "00%i"%(int(intersection_idx_list[1])+1)
                     elif intersection_from_direction == 1:
                         intersection_idx_list[0] = "00%i"%(int(intersection_idx_list[0])-1)
-                        
+
                     intersection_id = intersection_idx_list[0] + "_" + intersection_idx_list[1]
-            
+
             if time_offset == None:
                 # Next intersection
                 if not isinstance(self.car_list[car_id].D, float):
@@ -204,19 +205,19 @@ class IntersectionManager:
                     time_offset = position/cfg.MAX_SPEED
                 else:
                     time_offset = self.car_list[car_id].OT + self.car_list[car_id].D
-                
+
                 # Add the time in the intersection
                 lane = None
                 if self.car_list[car_id].zone == "AZ":
                     lane = self.car_list[car_id].desired_lane
                 else:
                     lane = self.car_list[car_id].lane
-                
+
                 turning = self.car_list[car_id].turning
                 time_in_inter = inter_length_data.getIntertime(lane, turning)
-                
+
                 time_offset += time_in_inter  # time pass intersection
-                
+
                 # Start from next intersection
                 if time_offset <= cfg.ROUTING_PERIOD:
                     # Not allowing scheduling for a while
@@ -229,18 +230,17 @@ class IntersectionManager:
                         intersection_from_direction = (direction-1)%4
                     elif turning == "R":
                         intersection_from_direction = (direction+1)%4
-                        
+
                     intersection_id = self.ID
-                    
+
             length = self.car_list[car_id].length
-            
-            
+
             return (length, time_offset, intersection_id, int(intersection_from_direction))
-        
+
         elif self.ID in lane_id:
             return None
-            
-            
+
+
         else:
             return None
 
@@ -263,7 +263,7 @@ class IntersectionManager:
                 traci.vehicle.setSpeed(car_id, car.speed_in_intersection)
 
                 del self.ccz_list[car_id]
-                
+
 
                 self.car_list[car_id].Leave_T = simu_step
                 self.total_delays += (car.Leave_T - car.Enter_T) - ((cfg.CCZ_LEN+cfg.GZ_LEN+cfg.BZ_LEN+cfg.PZ_LEN+cfg.AZ_LEN)/cfg.MAX_SPEED)
@@ -363,7 +363,7 @@ class IntersectionManager:
                 lane_direction = int(lane_data[2])
                 lane_sub_idx = int(lane_data[3])
                 lane = (4-lane_direction)*cfg.LANE_NUM_PER_DIRECTION + (cfg.LANE_NUM_PER_DIRECTION-lane_sub_idx-1)
-                
+
                 self.car_list[car_id].lane = lane
 
                 # Stay on its lane
