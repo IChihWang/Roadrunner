@@ -54,9 +54,18 @@ def run():
     try:
         while traci.simulation.getMinExpectedNumber() > 0:
 
-            if (simu_step*10)//1/10.0 == 200:
+            if (simu_step*10)//1/10.0 == 1000:
                 break
+            '''
+            #if 'L_1383' in intersection_manager.car_list:
+            if (simu_step*10)//1/10.0 == 709:
+                car = intersection_manager.car_list['L_2508']
+                print(car.original_lane)
+                print(car.lane)
+                print(car.desired_lane)
 
+                raw_input()
+            #'''
 
             traci.simulationStep()
             all_c = traci.vehicle.getIDList()

@@ -99,6 +99,7 @@ class Car:
 
         leader_tuple = traci.vehicle.getLeader(self.ID)
 
+
         if leader_tuple != None:
             if leader_tuple[0] in car_list.keys():
                 front_car_ID = leader_tuple[0]
@@ -125,7 +126,6 @@ class Car:
         # 2. If the car is ready for stopping
         if (self.position < (2*cfg.CCZ_ACC_LEN+cfg.CCZ_DEC2_LEN)) and ((self.CC_state == None) or (not ("Entering" in self.CC_state))):
             self.CC_state = "Entering_decelerate"
-
             # Compute the slowdown speed
             my_speed = traci.vehicle.getSpeed(self.ID)
             T = self.OT+self.D- ((cfg.CCZ_DEC2_LEN) / ((self.speed_in_intersection+cfg.MAX_SPEED)/2))
@@ -134,7 +134,8 @@ class Car:
             if T > max_total_time:
                 self.CC_auto_stop_n_go = True
                 slow_down_speed = 0.001
-
+            elif T < 0:
+                slow_down_speed = cfg.MAX_SPEED
             else:
                 x1 = self.position - (cfg.CCZ_ACC_LEN+cfg.CCZ_DEC2_LEN)
                 x2 = cfg.CCZ_ACC_LEN
@@ -171,7 +172,11 @@ class Car:
                 self.CC_state = "Entering_accerlerate"
 
                 traci.vehicle.setMaxSpeed(self.ID, cfg.MAX_SPEED)
-                dec_time = (self.position-cfg.CCZ_DEC2_LEN) / ((self.CC_slow_speed+cfg.MAX_SPEED)/2)
+                dec_time = None
+                if self.position>cfg.CCZ_DEC2_LEN:
+                    dec_time = (self.position-cfg.CCZ_DEC2_LEN) / ((self.CC_slow_speed+cfg.MAX_SPEED)/2)
+                else:
+                    dec_time = self.position / ((self.CC_slow_speed+cfg.MAX_SPEED)/2)
                 self.CC_slowdown_timer = dec_time
                 traci.vehicle.slowDown(self.ID, cfg.MAX_SPEED, dec_time)
 
@@ -193,7 +198,7 @@ class Car:
                 target_speed = min(cfg.MAX_SPEED, my_speed + cfg.MAX_ACC*cfg.TIME_STEP)
                 traci.vehicle.setSpeed(self.ID, target_speed)
                 if target_speed == cfg.MAX_SPEED:
-                    self.CC_state = "Max_speed"
+                    self.CC_state = "Keep_Max_speed"
             else:
                 my_speed = traci.vehicle.getSpeed(self.ID)
                 min_catch_up_time = (my_speed-front_speed)/cfg.MAX_ACC
@@ -206,42 +211,46 @@ class Car:
                         self.CC_state = "Platoon_following"
                         traci.vehicle.setSpeed(self.ID, front_speed)
                     else:
-                        target_speed = max(front_speed, my_speed - cfg.MAX_ACC*cfg.TIME_STEP)
                         traci.vehicle.setSpeed(self.ID, target_speed)
                 else:
-                    my_speed = traci.vehicle.getSpeed(self.ID)
                     target_speed = min(cfg.MAX_SPEED, my_speed + cfg.MAX_ACC*cfg.TIME_STEP)
                     traci.vehicle.setSpeed(self.ID, target_speed)
 
         elif (self.CC_state == "Platoon_following"):
+
             if front_car == None:
                 my_speed = traci.vehicle.getSpeed(self.ID)
                 target_speed = min(cfg.MAX_SPEED, my_speed + cfg.MAX_ACC*cfg.TIME_STEP)
                 traci.vehicle.setSpeed(self.ID, target_speed)
                 if target_speed == cfg.MAX_SPEED:
-                    self.CC_state = "Max_speed"
+                    self.CC_state = "Keep_Max_speed"
             else:
-                traci.vehicle.setSpeed(self.ID, front_speed)
+                if front_distance > cfg.HEADWAY:
+                    my_speed = traci.vehicle.getSpeed(self.ID)
+                    target_speed = min(cfg.MAX_SPEED, my_speed + cfg.MAX_ACC*cfg.TIME_STEP)
+                    traci.vehicle.setSpeed(self.ID, target_speed)
+                    self.CC_state = "Platoon_catchup"
+                else:
+                    traci.vehicle.setSpeed(self.ID, front_speed)
 
-        elif (self.CC_state == "Preseting_ready"):
+        elif (self.CC_state == "Preseting_start"):
             my_speed = traci.vehicle.getSpeed(self.ID)
             traci.vehicle.setMaxSpeed(self.ID, cfg.MAX_SPEED)
             dec_time = (max(cfg.MAX_SPEED-my_speed, my_speed-cfg.MAX_SPEED))/cfg.MAX_ACC
             self.CC_slowdown_timer = dec_time
             traci.vehicle.slowDown(self.ID,cfg.MAX_SPEED, dec_time)
-            self.CC_state = "Preseting_adjusting_speed"
+            self.CC_state = "Preseting_done"
 
 
-        elif (self.CC_state == "Preseting_adjusting_speed") and (self.CC_slowdown_timer <= 0):
+        elif (self.CC_state == "Preseting_done") and (self.CC_slowdown_timer <= 0):
              traci.vehicle.setSpeed(self.ID, cfg.MAX_SPEED)
-             self.CC_state = None
 
         elif (self.CC_state == "CruiseControl_ready"):
             reply = self.CC_get_shifts(car_list)
             self.CC_get_slow_down_speed()
             if self.CC_is_stop_n_go == True:
                 # Only stop at very closed to the intersection
-                self.CC_state = None
+                self.CC_state = "Keep_Max_speed"
             else:
                 self.CC_state = "CruiseControl_shift_start"
 
@@ -270,7 +279,7 @@ class Car:
             self.CC_slowdown_timer = dec_time
 
         elif (self.CC_state == "CruiseControl_accelerate") and (self.CC_slowdown_timer <= 0):
-            self.CC_state == "CruiseControl_fixed_speed"
+            self.CC_state == "CruiseControl_max_speed"
             traci.vehicle.setSpeed(self.ID, cfg.MAX_SPEED)
 
 
@@ -283,7 +292,7 @@ class Car:
             else:
                 return traci.vehicle.getSpeed(self.CC_front_car.ID) + traci.vehicle.getAcceleration(self.CC_front_car.ID)*cfg.TIME_STEP
         else:
-            return None
+            return traci.vehicle.getSpeed(self.ID) + traci.vehicle.getAcceleration(self.ID)*cfg.TIME_STEP
 
 
     # Compute the shifts
@@ -299,7 +308,7 @@ class Car:
             diff_distance = self.position - self.CC_front_car.position
             if (diff_distance - catch_up_distance - self.CC_front_car.length) < (cfg.HEADWAY):
                 # The car is going to catch up the front car
-                shifting_end = self.CC_front_car.CC_shift_end + front_car.length + cfg.HEADWAY
+                shifting_end = self.CC_front_car.CC_shift_end + self.CC_front_car.length + cfg.HEADWAY
                 is_catching_up_front = True
             self.CC_shift_end = shifting_end
 

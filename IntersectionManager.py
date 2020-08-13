@@ -149,8 +149,8 @@ class IntersectionManager:
                 self.ccz_list[car_id] = car
                 del self.pz_list[car_id]
 
-                #if (car.CC_state == None):
-                    #car.CC_state = "CruiseControl_ready"
+                if (car.CC_state == "Preseting_done"):
+                    car.CC_state = "CruiseControl_ready"
 
 
 
@@ -205,21 +205,12 @@ class IntersectionManager:
 
                 # Take over the speed control from the car
                 traci.vehicle.setSpeedMode(car_id, 0)
-                car.CC_state = "Preseting_ready"
-
-
-                # Cancel the auto gap
-                traci.vehicle.setLaneChangeMode(car_id, 0)
-
-                lane_id = traci.vehicle.getLaneID(car_id)
-                lane = ((4-int(lane_id[0]))*cfg.LANE_NUM_PER_DIRECTION) + (cfg.LANE_NUM_PER_DIRECTION-int(lane_id[2])-1)
-                self.car_list[car_id].lane = lane
-
-                # Stay on its lane
-                traci.vehicle.changeLane(car_id, int(lane_id[2]), 10.0)
-
+                car.CC_state = "Preseting_start"
 
                 car.zone_state = "PZ_set"
+
+
+
 
 
         ##########################################
@@ -232,6 +223,7 @@ class IntersectionManager:
         sorted_ccontrol_list = sorted(ccontrol_list.items(), key=lambda x: x[1].position)
         # SUPER IMPORTANT: sorted to ensure the following car speed
         for car_id, car in sorted_ccontrol_list:
+
             # Cars perform their own CC
             car.handle_CC_behavior(self.car_list)
 
@@ -277,6 +269,16 @@ class IntersectionManager:
 
                         min_gap = max(cfg.HEADWAY, min_distance+cfg.HEADWAY)
                         traci.vehicle.setMinGap(car_id, min_gap)
+
+
+                # Cancel the auto gap
+                traci.vehicle.setLaneChangeMode(car_id, 512)
+                # Keep the car on the same lane
+                lane_id = traci.vehicle.getLaneID(car_id)
+                lane = ((4-int(lane_id[0]))*cfg.LANE_NUM_PER_DIRECTION) + (cfg.LANE_NUM_PER_DIRECTION-int(lane_id[2])-1)
+                self.car_list[car_id].lane = lane
+                # Stay on its lane
+                traci.vehicle.changeLane(car_id, int(lane_id[2]), 1.0)
 
 
 
