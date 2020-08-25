@@ -32,3 +32,6 @@ N_TIME_STEP = 1800  # number of time steps
 TIME_STEP = 0.1
 
 DISTANCE = 1.5 # 1.5 lane
+
+PEDESTRIAN_POSSIBILITY = 0.1 # 0~1
+PEDESTRIAN_TIME_GAP = 60 # 60 second

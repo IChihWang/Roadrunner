@@ -32,6 +32,15 @@ class Car:
         self.length = length
         self.turning = turning
 
+        self.in_dir = lane / cfg.LANE_NUM_PER_DIRECTION
+        self.out_dir = None
+        if turning == 'S':
+            self.out_dir = (self.in_dir+2)%4
+        elif turning == 'R':
+            self.out_dir = (self.in_dir+1)%4
+        elif turning == 'L':
+            self.out_dir = (self.in_dir-1)%4
+
         # Determine the speed in the intersection
         speed_in_intersection = cfg.TURN_SPEED
         if turning == "S":

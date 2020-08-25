@@ -3,7 +3,9 @@ from get_inter_info import Data
 from ortools.linear_solver import pywraplp
 import config as cfg
 import copy
+import get_inter_length_info
 
+inter_length_data = get_inter_length_info.Data()
 
 data = Data()
 
@@ -164,7 +166,7 @@ def Icacc(old_cars, new_cars):
 
     return avg_delay
 
-def IcaccPlus(old_cars, new_cars):
+def IcaccPlus(old_cars, new_cars, pedestrian_time_mark_list):
     # part 1: calculate OT
     for c_idx in range(len(new_cars)):
         OT = new_cars[c_idx].position/cfg.MAX_SPEED
@@ -314,7 +316,67 @@ def IcaccPlus(old_cars, new_cars):
     #'''
 
 
-    # part 7: set objective
+    # part 7: pedestrian
+    for car in new_cars:
+        in_dir = car.in_dir
+        out_dir = car.out_dir
+
+        # Set pedestrian constraint if "in" is not none
+        if pedestrian_time_mark_list[in_dir] != None:
+            avoid_start_AT = pedestrian_time_mark_list[in_dir] - car.length/car.speed_in_intersection
+            avoid_end_AT = pedestrian_time_mark_list[in_dir]+cfg.PEDESTRIAN_TIME_GAP
+
+            if avoid_start_AT - car.OT <= 0:
+                bound = avoid_end_AT - car.OT
+                tmp_conts2 = solver.Constraint(bound, solver.infinity())
+                tmp_conts2.SetCoefficient(car.D, 1)
+            else:
+                flag = solver.IntVar(0, 1, 'flag_ped_in_'+str(car.ID))
+
+                bound = avoid_end_AT - car.OT - cfg.LARGE_NUM
+                tmp_conts2 = solver.Constraint(bound, solver.infinity())
+                tmp_conts2.SetCoefficient(car.D, 1)
+                tmp_conts2.SetCoefficient(flag, -cfg.LARGE_NUM)
+
+                bound = -(avoid_start_AT - car.OT)
+                tmp_conts1 = solver.Constraint(bound, solver.infinity())
+                tmp_conts2.SetCoefficient(car.D, -1)
+                tmp_conts1.SetCoefficient(flag, cfg.LARGE_NUM)
+
+        #'''
+        # Set pedestrian constraint if "out" is not none
+        if pedestrian_time_mark_list[out_dir] != None:
+            avoid_start_AT = pedestrian_time_mark_list[out_dir] - car.length/cfg.MAX_SPEED
+            avoid_end_AT = pedestrian_time_mark_list[out_dir]+cfg.PEDESTRIAN_TIME_GAP
+
+            print(car.ID, avoid_start_AT, avoid_end_AT)
+
+            travel_in_inter_time = inter_length_data.getIntertime(car.lane, car.turning)
+
+
+            if avoid_start_AT - car.OT - travel_in_inter_time <= 0:
+                bound = avoid_end_AT - car.OT - travel_in_inter_time
+                tmp_conts2 = solver.Constraint(bound, solver.infinity())
+                tmp_conts2.SetCoefficient(car.D, 1)
+            else:
+                flag = solver.IntVar(0, 1, 'flag_ped_out_'+str(car.ID))
+
+                bound = avoid_end_AT - car.OT - travel_in_inter_time - cfg.LARGE_NUM
+                tmp_conts2 = solver.Constraint(bound, solver.infinity())
+                tmp_conts2.SetCoefficient(car.D, 1)
+                tmp_conts2.SetCoefficient(flag, -cfg.LARGE_NUM)
+                print(car.ID, "1" , avoid_end_AT - car.OT - travel_in_inter_time)
+
+                bound = -(avoid_start_AT - car.OT - travel_in_inter_time)
+                tmp_conts1 = solver.Constraint(bound, solver.infinity())
+                tmp_conts2.SetCoefficient(car.D, -1)
+                tmp_conts1.SetCoefficient(flag, cfg.LARGE_NUM)
+                print(car.ID, "2" , bound)
+        #'''
+
+
+
+    # part 8: set objective
     objective = solver.Objective()
 
     for c_idx in range(len(new_cars)):
@@ -327,7 +389,7 @@ def IcaccPlus(old_cars, new_cars):
     print('Number of constraints =', solver.NumConstraints())
     #'''
 
-    # part 8: Solve the problem
+    # part 9: Solve the problem
     sol_status = solver.Solve()
 
 

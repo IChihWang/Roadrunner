@@ -8,7 +8,9 @@ import threading
 from Cars import Car
 from milp import Icacc, IcaccPlus, Fcfs, FixedSignal
 from LaneAdviser import LaneAdviser
+from get_inter_length_info import Data
 
+inter_length_data = Data()
 
 class IntersectionManager:
     def __init__(self):
@@ -39,6 +41,10 @@ class IntersectionManager:
 
         self.total_fuel_consumption = 0
         self.fuel_consumption_count = 0
+
+        # Pedestrian control
+        self.is_pedestrian_list = [False]*4         # Whether there is a pedestrian request
+        self.pedestrian_time_mark_list = [None]*4      # Planned pedestrian time (In case some cars insterted and interrupt the pedestiran time)
 
 
         self.set_round_lane()
@@ -181,9 +187,18 @@ class IntersectionManager:
                     traci.vehicle.setColor(n_sched_car[c_idx].ID, (100,250,92))
                     n_sched_car[c_idx].D = None
 
-                self.scheduling_thread = threading.Thread(target = Scheduling, args = (self.lane_advisor, sched_car, n_sched_car, advised_n_sched_car, self.cc_list, self.car_list))
-                self.scheduling_thread.start()
 
+                # Setting the pedestrian list
+                self.is_pedestrian_list = [True]*4
+                for direction in range(4):
+                    # Cancel the request if a pedestrian time has been scheduled
+                    if self.is_pedestrian_list[direction] == True and self.pedestrian_time_mark_list[direction] != None:
+                        self.is_pedestrian_list[direction] = False
+                self.pedestrian_time_mark_list = self.get_max_AT_direction(sched_car, self.is_pedestrian_list, self.pedestrian_time_mark_list)
+                print(self.pedestrian_time_mark_list)
+
+                self.scheduling_thread = threading.Thread(target = Scheduling, args = (self.lane_advisor, sched_car, n_sched_car, advised_n_sched_car, self.cc_list, self.car_list, self.pedestrian_time_mark_list, self.schedule_period_count))
+                self.scheduling_thread.start()
 
                 self.schedule_period_count = 0
 
@@ -282,19 +297,55 @@ class IntersectionManager:
 
 
 
+    # Compute teh max AT for pedestrian time
+    def get_max_AT_direction(self, sched_car, is_pedestrian_list, pedestrian_time_mark_list):
+        max_AT = [0]*4  # Four directions
+
+        for car in sched_car:
+            # Compute the direction of entering/exiting for the intersection
+            in_dir = car.in_dir
+            out_dir = car.out_dir
+
+            # Compute arrival time at the exiting point and entering point
+            in_AT = car.OT + car.D + car.length/car.speed_in_intersection
+            out_AT = car.OT + car.D + car.length/cfg.MAX_SPEED + inter_length_data.getIntertime(car.lane, car.turning)
+
+            # Find max and update
+            if in_AT > max_AT[in_dir]:
+                max_AT[in_dir] = in_AT
+            if out_AT > max_AT[out_dir]:
+                max_AT[out_dir] = out_AT
+
+        for direction in range(4):
+            if pedestrian_time_mark_list[direction] != None:
+                max_AT[direction] = pedestrian_time_mark_list[direction]
+            elif is_pedestrian_list[direction] == False:
+                max_AT[direction] = None
+
+        return max_AT
+
+
+
 
 ##########################
 # Scheduling thread that handles scheduling and update the table for lane advising
-def Scheduling(lane_advisor, sched_car, n_sched_car, advised_n_sched_car, cc_list, car_list):
+def Scheduling(lane_advisor, sched_car, n_sched_car, advised_n_sched_car, cc_list, car_list, pedestrian_time_mark_list, schedule_period_count):
+
     if int(sys.argv[3]) == 0:
-        IcaccPlus(sched_car, n_sched_car)
+        IcaccPlus(sched_car, n_sched_car, pedestrian_time_mark_list)
     elif int(sys.argv[3]) == 1:
         Icacc(sched_car, n_sched_car)
     elif int(sys.argv[3]) == 2:
         Fcfs(sched_car, n_sched_car)
 
-
     lane_advisor.updateTableFromCars(n_sched_car, advised_n_sched_car)
 
     for car in n_sched_car:
         car.zone_state = "scheduled"
+
+    # Update the pedestrian ime list
+    for direction in range(4):
+        if pedestrian_time_mark_list[direction] != None:
+            pedestrian_time_mark_list[direction] -= schedule_period_count
+        if pedestrian_time_mark_list[direction] < -cfg.PEDESTRIAN_TIME_GAP:
+            pedestrian_time_mark_list[direction] = None

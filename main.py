@@ -54,7 +54,7 @@ def run():
     try:
         while traci.simulation.getMinExpectedNumber() > 0:
 
-            if (simu_step*10)//1/10.0 == 1000:
+            if (simu_step*10)//1/10.0 == cfg.N_TIME_STEP:
                 break
             '''
             #if 'L_1383' in intersection_manager.car_list:
