@@ -197,8 +197,20 @@ class IntersectionManager:
                 self.pedestrian_time_mark_list = self.get_max_AT_direction(sched_car, self.is_pedestrian_list, self.pedestrian_time_mark_list)
                 print(self.pedestrian_time_mark_list)
 
+                '''
+                print(len(n_sched_car))
+                for car in n_sched_car:
+                    in_dir = car.in_dir
+                    out_dir = car.out_dir
+                    if self.pedestrian_time_mark_list[out_dir] != None:
+                        traci.vehicle.setColor(car.ID, (255,187,59))
+                    if self.pedestrian_time_mark_list[in_dir] != None:
+                        traci.vehicle.setColor(car.ID, (255,59,59))
+                '''
+
                 self.scheduling_thread = threading.Thread(target = Scheduling, args = (self.lane_advisor, sched_car, n_sched_car, advised_n_sched_car, self.cc_list, self.car_list, self.pedestrian_time_mark_list, self.schedule_period_count))
                 self.scheduling_thread.start()
+
 
                 self.schedule_period_count = 0
 

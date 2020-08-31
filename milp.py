@@ -340,7 +340,7 @@ def IcaccPlus(old_cars, new_cars, pedestrian_time_mark_list):
 
                 bound = -(avoid_start_AT - car.OT)
                 tmp_conts1 = solver.Constraint(bound, solver.infinity())
-                tmp_conts2.SetCoefficient(car.D, -1)
+                tmp_conts1.SetCoefficient(car.D, -1)
                 tmp_conts1.SetCoefficient(flag, cfg.LARGE_NUM)
 
         #'''
@@ -348,8 +348,6 @@ def IcaccPlus(old_cars, new_cars, pedestrian_time_mark_list):
         if pedestrian_time_mark_list[out_dir] != None:
             avoid_start_AT = pedestrian_time_mark_list[out_dir] - car.length/cfg.MAX_SPEED
             avoid_end_AT = pedestrian_time_mark_list[out_dir]+cfg.PEDESTRIAN_TIME_GAP
-
-            print(car.ID, avoid_start_AT, avoid_end_AT)
 
             travel_in_inter_time = inter_length_data.getIntertime(car.lane, car.turning)
 
@@ -365,13 +363,11 @@ def IcaccPlus(old_cars, new_cars, pedestrian_time_mark_list):
                 tmp_conts2 = solver.Constraint(bound, solver.infinity())
                 tmp_conts2.SetCoefficient(car.D, 1)
                 tmp_conts2.SetCoefficient(flag, -cfg.LARGE_NUM)
-                print(car.ID, "1" , avoid_end_AT - car.OT - travel_in_inter_time)
 
                 bound = -(avoid_start_AT - car.OT - travel_in_inter_time)
                 tmp_conts1 = solver.Constraint(bound, solver.infinity())
-                tmp_conts2.SetCoefficient(car.D, -1)
+                tmp_conts1.SetCoefficient(car.D, -1)
                 tmp_conts1.SetCoefficient(flag, cfg.LARGE_NUM)
-                print(car.ID, "2" , bound)
         #'''
 
 
