@@ -48,8 +48,9 @@ def run():
     """execute the TraCI control loop"""
     simu_step = 0
 
-    intersection_manager = IntersectionManager()
-
+    intersections = [IntersectionManager("00%i"%(i) + '_' + "001") for i in range(1, 3)]
+    intersections[0].connect(1, intersections[1], 3)
+    turning_track_dict = dict()
 
     try:
         while traci.simulation.getMinExpectedNumber() > 0:
@@ -71,11 +72,34 @@ def run():
             all_c = traci.vehicle.getIDList()
             # Update the position of each car
             for car_id in all_c:
-                lane_id = traci.vehicle.getLaneID(car_id)
-                intersection_manager.update_car(car_id, lane_id, simu_step)
 
-            intersection_manager.run(simu_step)
+                lane_id = traci.vehicle.getLaneID(car_id)
+
+                is_handled = False
+                for intersection_manager in intersections:
+                    if intersection_manager.check_in_my_region(lane_id):
+
+                        if not car_id in turning_track_dict:
+                            turning_track_dict[car_id] = [0, intersection_manager]
+                        elif not turning_track_dict[car_id][1] is intersection_manager:
+                            turning_track_dict[car_id] = [1, intersection_manager]
+                        turning_idx = turning_track_dict[car_id][0]
+                        car_turn = car_id[turning_idx]
+
+                        is_handled = True
+                        intersection_manager.update_car(car_id, lane_id, simu_step, car_turn)
+                        break
+                if not is_handled:
+                    # Leaving intersections
+                    traci.vehicle.setSpeed(car_id, cfg.MAX_SPEED)
+
+            for intersection_manager in intersections:
+                intersection_manager.run(simu_step)
+
             simu_step += cfg.TIME_STEP
+
+
+
     except Exception as e:
         traceback.print_exc()
 
@@ -141,7 +165,8 @@ if __name__ == "__main__":
         # 3. This is the normal way of using traci. sumo is started as a subprocess and then the python script connects and runs
         traci.start([sumoBinary, "-c", "data/icacc+.sumocfg",
                                  "--tripinfo-output", "tripinfo.xml","--step-length", str(cfg.TIME_STEP),
-                                 "--collision.mingap-factor", "0"])
+                                 "--collision.mingap-factor", "0",
+                                 "--default.speeddev", "1"])
 
         # 4. Start running SUMO
         run()
