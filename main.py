@@ -59,13 +59,23 @@ def run():
                 break
             '''
             #if 'L_1383' in intersection_manager.car_list:
-            if (simu_step*10)//1/10.0 == 709:
-                car = intersection_manager.car_list['L_2508']
-                print(car.original_lane)
-                print(car.lane)
-                print(car.desired_lane)
+            if (simu_step*10)//1/10.0 == 1534:
+
+                car = intersections[1].car_list['LS_2608']
+                print(car.ID, car.zone, car.zone_state, car.CC_state)
+
+                car = intersections[1].car_list['LS_2575']
+                print(car.ID, car.zone, car.zone_state, car.CC_state)
+
 
                 raw_input()
+            if simu_step > 1534:
+                car = intersections[1].car_list['LS_2608']
+                print(car.ID, car.zone, car.zone_state, car.CC_state, car.CC_get_front_speed())
+
+                car = intersections[1].car_list['LS_2575']
+                print(car.ID, car.zone, car.zone_state, car.CC_state, car.CC_get_front_speed())
+
             #'''
 
             traci.simulationStep()

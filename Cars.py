@@ -57,6 +57,8 @@ class Car:
         self.original_lane = lane   # The lane when the car joined the system
         self.lane = lane
         self.desired_lane = lane
+        self.dst_lane = None
+        self.is_spillback = False
 
         # Position: how far between it and the intersection (0 at the entry of intersection)
         self.position = cfg.AZ_LEN + cfg.PZ_LEN + cfg.GZ_LEN+ cfg.BZ_LEN + cfg.CCZ_LEN
