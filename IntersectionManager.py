@@ -323,15 +323,6 @@ class IntersectionManager:
                 car.desired_lane = car.lane
 
                 lane_sub_idx = (cfg.LANE_NUM_PER_DIRECTION-lane%cfg.LANE_NUM_PER_DIRECTION-1)
-                out_sub_lane = (cfg.LANE_NUM_PER_DIRECTION-lane%cfg.LANE_NUM_PER_DIRECTION-1)
-
-                if car.turning == 'R':
-                    out_sub_lane = 0
-                elif car.turning == 'L':
-                    out_sub_lane = cfg.LANE_NUM_PER_DIRECTION-1
-
-                car.dst_lane = car.out_dir*cfg.LANE_NUM_PER_DIRECTION + out_sub_lane
-
 
                 # Stay on its lane
                 traci.vehicle.changeLane(car_id, lane_sub_idx, 1.0)
@@ -372,44 +363,27 @@ class IntersectionManager:
         for car_id, car in sorted_ccontrol_list:
 
             # Cars perform their own CC
-            car.handle_CC_behavior(self.car_list)
+            if car.zone != None:
+                car.handle_CC_behavior(self.car_list)
 
 
 
         ################################################
         # Change lane in AZ
 
-        '''
+        # Check whether there is a spillback
+        accumulate_car_len_lane = [0]*(4*cfg.LANE_NUM_PER_DIRECTION)
+        spillback_lane_advise_avoid = [False]*(4*cfg.LANE_NUM_PER_DIRECTION)
+        #'''
         for car_id, car in self.car_list.items():
             lane_idx = car.dst_lane
-            accumulate_car_len_lane[lane_idx] += (car.length + cfg.HEADWAY)
+            if self.others_road_info[lane_idx] != None:
+                accumulate_car_len_lane[lane_idx] += (car.length + cfg.HEADWAY)
 
-        for car in old_cars:
-            lane_idx = car.dst_lane
-            if others_road_info[lane_idx] != None:
-                others_road_info[lane_idx]['avail_len'] -= (car.length + cfg.HEADWAY)
-        for lane_idx in range(len(others_road_info)):
-            if others_road_info[lane_idx] != None:
-                if accumulate_car_len_lane[lane_idx] > others_road_info[lane_idx]['avail_len']:
-                    spillback_delay_lane[lane_idx] = others_road_info[lane_idx]['delay']
-
-        spillback_delay = spillback_delay_lane[lane_idx]
-        if others_road_info[lane_idx] != None:
-            multiply_factor = (cfg.TOTAL_LEN - others_road_info[lane_idx]['avail_len'] + accumulate_car_len_lane[lane_idx])/(cfg.CCZ_LEN+cfg.BZ_LEN+cfg.GZ_LEN)
-            spillback_delay = spillback_delay*multiply_factor
-            #if spillback_delay > 0.01:
-                #print(spillback_delay, multiply_factor)
-
-        if spillback_delay > 0:
-            #print("SBD: " + new_cars[c_idx].ID, spillback_delay)
-            new_cars[c_idx].is_spillback = True
-        if new_cars[c_idx].turning == 'S':
-            new_cars[c_idx].D = solver.NumVar(max(0, spillback_delay), solver.infinity(), 'd'+str(c_idx))
-        else:
-            min_d = (2*cfg.CCZ_DEC2_LEN/(cfg.MAX_SPEED+cfg.TURN_SPEED)) - (cfg.CCZ_DEC2_LEN/cfg.MAX_SPEED)
-            new_cars[c_idx].D = solver.NumVar(max(min_d, spillback_delay), solver.infinity(), 'd'+str(c_idx))
-
-        '''
+        for lane_idx in range(4*cfg.LANE_NUM_PER_DIRECTION):
+            if self.others_road_info[lane_idx] != None:
+                if accumulate_car_len_lane[lane_idx] >= self.others_road_info[lane_idx]['avail_len']:
+                    spillback_lane_advise_avoid[lane_idx] = True
 
 
 
@@ -426,7 +400,7 @@ class IntersectionManager:
 
 
                 #advised_lane = self.lane_advisor.adviseLaneShortestTrajectory(car)
-                advised_lane = self.lane_advisor.adviseLane(self.car_list[car_id])
+                advised_lane = self.lane_advisor.adviseLane(self.car_list[car_id], spillback_lane_advise_avoid)
                 #advised_lane = self.lane_advisor.adviseLane_v2(self.car_list[car_id])
                 #advised_lane = random.randrange(0, cfg.LANE_NUM_PER_DIRECTION)
 

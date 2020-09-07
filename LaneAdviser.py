@@ -113,8 +113,32 @@ class LaneAdviser:
 
         #myGraphic.gui.setTimeMatrix(self.timeMatrix)
     # Give lane advice to Cars
-    def adviseLane(self, car):
+    def adviseLane(self, car, spillback_lane_advise_avoid):
         advise_lane = None
+
+        # If spillback detected, avoid the other lanes
+        if spillback_lane_advise_avoid[car.dst_lane] == True:
+            # Get the shortest or the most ideal lane
+            start_lane = (car.lane//cfg.LANE_NUM_PER_DIRECTION)*cfg.LANE_NUM_PER_DIRECTION
+            ideal_lane = None
+            if car.turning == 'R':
+                ideal_lane = start_lane+cfg.LANE_NUM_PER_DIRECTION-1
+            elif car.turning == 'L':
+                ideal_lane = start_lane
+            else:
+                ideal_lane = start_lane+(cfg.LANE_NUM_PER_DIRECTION//2)
+            advise_lane = ideal_lane
+
+            print("ADV: ", car.ID, advise_lane)
+            # The lane is chosen, update the matrix update giving the lane advice
+            self.updateTableAfterAdvise(advise_lane, car.turning, car.length, self.timeMatrix)
+            # Record the given lane
+            self.advised_lane[(car.lane//cfg.LANE_NUM_PER_DIRECTION, car.turning)] = advise_lane
+            # Change the exact index to the lane index of one direction
+            advise_lane = advise_lane%cfg.LANE_NUM_PER_DIRECTION
+
+            return cfg.LANE_NUM_PER_DIRECTION-advise_lane-1 # The index of SUMO is reversed
+
 
         # Sort out the LOTs and list the candidates
         start_lane = (car.lane//cfg.LANE_NUM_PER_DIRECTION)*cfg.LANE_NUM_PER_DIRECTION

@@ -57,18 +57,21 @@ def run():
 
             if (simu_step*10)//1/10.0 == cfg.N_TIME_STEP:
                 break
-            '''
+            #'''
             #if 'L_1383' in intersection_manager.car_list:
-            if (simu_step*10)//1/10.0 == 1534:
-
-                car = intersections[1].car_list['LS_2608']
+            if (simu_step*10)//1/10.0 == 1360:
+                '''
+                car = intersections[1].car_list['LR_808']
                 print(car.ID, car.zone, car.zone_state, car.CC_state)
 
-                car = intersections[1].car_list['LS_2575']
+                car = intersections[1].car_list['SR_742']
                 print(car.ID, car.zone, car.zone_state, car.CC_state)
-
+                '''
 
                 raw_input()
+            #'''
+
+            '''
             if simu_step > 1534:
                 car = intersections[1].car_list['LS_2608']
                 print(car.ID, car.zone, car.zone_state, car.CC_state, car.CC_get_front_speed())
@@ -176,7 +179,8 @@ if __name__ == "__main__":
         traci.start([sumoBinary, "-c", "data/icacc+.sumocfg",
                                  "--tripinfo-output", "tripinfo.xml","--step-length", str(cfg.TIME_STEP),
                                  "--collision.mingap-factor", "0",
-                                 "--default.speeddev", "1"])
+                                 "--default.speeddev", "1",
+                                 "--log", "error_log.txt"])
 
         # 4. Start running SUMO
         run()
