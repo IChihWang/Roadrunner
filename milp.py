@@ -207,7 +207,7 @@ def IcaccPlus(old_cars, new_cars, pedestrian_time_mark_list, others_road_info):
         '''
         spillback_delay = spillback_delay_lane[lane_idx]
         if others_road_info[lane_idx] != None:
-            multiply_factor = (cfg.TOTAL_LEN + (cfg.CCZ_ACC_LEN) - others_road_info[lane_idx]['avail_len'] + accumulate_car_len_lane[lane_idx])/(cfg.CCZ_LEN+cfg.BZ_LEN)
+            multiply_factor = (cfg.TOTAL_LEN + (cfg.CCZ_ACC_LEN) - others_road_info[lane_idx]['avail_len'] + accumulate_car_len_lane[lane_idx])/(cfg.CCZ_LEN)
             spillback_delay = spillback_delay*multiply_factor
             #if spillback_delay > 0.01:
                 #print(spillback_delay, multiply_factor)
