@@ -482,7 +482,7 @@ class IntersectionManager:
 def Scheduling(lane_advisor, sched_car, n_sched_car, advised_n_sched_car, cc_list, car_list, pedestrian_time_mark_list, schedule_period_count, others_road_info):
 
     if int(sys.argv[3]) == 0:
-        IcaccPlus(sched_car, n_sched_car, pedestrian_time_mark_list, others_road_info)
+        IcaccPlus(sched_car, n_sched_car, advised_n_sched_car, pedestrian_time_mark_list, others_road_info)
     elif int(sys.argv[3]) == 1:
         Icacc(sched_car, n_sched_car)
     elif int(sys.argv[3]) == 2:

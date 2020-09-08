@@ -4,6 +4,7 @@ from ortools.linear_solver import pywraplp
 import config as cfg
 import copy
 import get_inter_length_info
+import numpy
 
 inter_length_data = get_inter_length_info.Data()
 
@@ -166,7 +167,7 @@ def Icacc(old_cars, new_cars):
 
     return avg_delay
 
-def IcaccPlus(old_cars, new_cars, pedestrian_time_mark_list, others_road_info):
+def IcaccPlus(old_cars, new_cars, advised_n_sched_car, pedestrian_time_mark_list, others_road_info):
     # part 1: calculate OT
     for c_idx in range(len(new_cars)):
         OT = new_cars[c_idx].position/cfg.MAX_SPEED
@@ -176,8 +177,61 @@ def IcaccPlus(old_cars, new_cars, pedestrian_time_mark_list, others_road_info):
     solver = pywraplp.Solver('SolveIntegerProblem',pywraplp.Solver.CBC_MIXED_INTEGER_PROGRAMMING)
 
     # part 3: claim parameters
-    spillback_delay_lane = [0]*(len(others_road_info))
+
+    car_count_src_dst_lane = [ [0]*len(others_road_info) for i in range(len(others_road_info))]
+    for car in advised_n_sched_car:
+        lane_idx = car.lane
+        dst_lane_idx = car.dst_lane
+        for l_idx in range(len(others_road_info)):
+            if l_idx != dst_lane_idx:
+                car_count_src_dst_lane[lane_idx][l_idx] += 1
+
+    # Sort new cars
+    new_car_src_dst_lane = [[[] for i in range(len(others_road_info))] for i in range(len(others_road_info))]
+    for car in new_cars:
+        lane_idx = car.lane
+        dst_lane_idx = car.dst_lane
+        new_car_src_dst_lane[lane_idx][dst_lane_idx].append(car)
+
+
     accumulate_car_len_lane = [0]*(len(others_road_info))
+    for car in old_cars:
+        lane_idx = car.dst_lane
+        accumulate_car_len_lane[lane_idx] += (car.length + cfg.HEADWAY)
+
+    for dst_lane_idx in range(len(others_road_info)):
+        # Doesn't connected to other intersections
+        if others_road_info[dst_lane_idx] == None:
+            for lane_idx in range(len(others_road_info)):
+                for car in new_car_src_dst_lane[lane_idx][dst_lane_idx]:
+                    if car.turning == 'S':
+                        car.D = solver.NumVar(0, solver.infinity(), 'd'+str(car.ID))
+                    else:
+                        min_d = (2*cfg.CCZ_DEC2_LEN/(cfg.MAX_SPEED+cfg.TURN_SPEED)) - (cfg.CCZ_DEC2_LEN/cfg.MAX_SPEED)
+                        car.D = solver.NumVar(min_d, solver.infinity(), 'd'+str(car.ID))
+
+        # Connected to other intersections
+        else:
+            affected_car_count_list = [car_count_src_dst_lane[lane_idx][dst_lane_idx] for lane_idx in range(len(others_road_info))]
+            sorted_lane_idx_list = numpy.argsort(affected_car_count_list)
+
+            accumulate_car_len = -others_road_info[dst_lane_idx]['avail_len']
+            recorded_delay = others_road_info[dst_lane_idx]['delay']
+
+            for lane_idx in sorted_lane_idx_list:
+                for car in new_car_src_dst_lane[lane_idx][dst_lane_idx]:
+                    accumulate_car_len += (car.length + cfg.HEADWAY)
+                    spillback_delay_multiply_factor = accumulate_car_len/(cfg.CCZ_LEN+cfg.BZ_LEN)
+                    spillback_delay = recorded_delay*spillback_delay_multiply_factor
+
+                    if new_cars[c_idx].turning == 'S':
+                        car.D = solver.NumVar(max(0, spillback_delay), solver.infinity(), 'd'+str(car.ID))
+                    else:
+                        min_d = (2*cfg.CCZ_DEC2_LEN/(cfg.MAX_SPEED+cfg.TURN_SPEED)) - (cfg.CCZ_DEC2_LEN/cfg.MAX_SPEED)
+                        car.D = solver.NumVar(max(min_d, spillback_delay), solver.infinity(), 'd'+str(car.ID))
+
+
+    '''
     for car in new_cars:
         lane_idx = car.dst_lane
         accumulate_car_len_lane[lane_idx] += (car.length + cfg.HEADWAY)
@@ -191,20 +245,10 @@ def IcaccPlus(old_cars, new_cars, pedestrian_time_mark_list, others_road_info):
             if accumulate_car_len_lane[lane_idx] > others_road_info[lane_idx]['avail_len']:
                 spillback_delay_lane[lane_idx] = others_road_info[lane_idx]['delay']
 
+
     for c_idx in range(len(new_cars)):
         lane_idx = new_cars[c_idx].dst_lane
         car_idx = new_cars[c_idx].ID.split("_")
-        '''
-        if int(car_idx[1]) > 500 and (lane_idx>2 and lane_idx<6):
-            if others_road_info[lane_idx] != None:
-                print(new_cars[c_idx].ID, lane_idx, spillback_delay_lane[lane_idx], accumulate_car_len_lane[lane_idx])
-
-                print(others_road_info[lane_idx]['delay'], others_road_info[lane_idx]['avail_len'])
-        elif int(car_idx[1]) > 500 and (lane_idx>8):
-            if others_road_info[lane_idx] != None:
-                print(new_cars[c_idx].ID, lane_idx, spillback_delay_lane[lane_idx], accumulate_car_len_lane[lane_idx])
-                print(others_road_info[lane_idx]['delay'], others_road_info[lane_idx]['avail_len'])
-        '''
         spillback_delay = spillback_delay_lane[lane_idx]
         if others_road_info[lane_idx] != None:
             multiply_factor = (cfg.TOTAL_LEN - others_road_info[lane_idx]['avail_len'] + accumulate_car_len_lane[lane_idx])/(cfg.CCZ_LEN+cfg.BZ_LEN)
@@ -220,7 +264,7 @@ def IcaccPlus(old_cars, new_cars, pedestrian_time_mark_list, others_road_info):
         else:
             min_d = (2*cfg.CCZ_DEC2_LEN/(cfg.MAX_SPEED+cfg.TURN_SPEED)) - (cfg.CCZ_DEC2_LEN/cfg.MAX_SPEED)
             new_cars[c_idx].D = solver.NumVar(max(min_d, spillback_delay), solver.infinity(), 'd'+str(c_idx))
-
+    '''
 
     # part 4: set constrain (10)
     all_cars = old_cars+new_cars
