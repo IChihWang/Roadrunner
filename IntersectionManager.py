@@ -396,7 +396,8 @@ class IntersectionManager:
                 traci.vehicle.setLaneChangeMode(car_id, 784)
                 # 256 (collision avoidance) or 512 (collision avoidance and safety-gap enforcement)
 
-                time_in_AZ = cfg.AZ_LEN/cfg.MAX_SPEED *3
+                #time_in_AZ = cfg.AZ_LEN/cfg.MAX_SPEED *3
+                time_in_AZ = 9999.91
 
 
                 #advised_lane = self.lane_advisor.adviseLaneShortestTrajectory(car)
