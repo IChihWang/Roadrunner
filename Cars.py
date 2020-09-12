@@ -263,6 +263,9 @@ class Car:
              traci.vehicle.setSpeed(self.ID, cfg.MAX_SPEED)
 
         elif (self.CC_state == "CruiseControl_ready"):
+            if self.CC_front_car != None and self.CC_front_car.CC_shift == None:
+                self.CC_front_car = None
+
             reply = self.CC_get_shifts(car_list)
             self.CC_get_slow_down_speed()
             if self.CC_is_stop_n_go == True:

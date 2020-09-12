@@ -58,17 +58,21 @@ def generate_routefile(arrival_rate):
                 if random.uniform(0, 1) < dir_prob[in_direction-1]:
                     #dir_r = random.randrange(3)+1
                     dir_r = numpy.random.choice(numpy.arange(1, 4), p=turn_prob)
-                    lane_r = random.randrange(cfg.LANE_NUM_PER_DIRECTION)
+                    #lane_r = random.randrange(cfg.LANE_NUM_PER_DIRECTION)
+                    lane_r = 0
                     car_length = random.randrange(5,10)
 
 
                     veh_str = "\t<vehicle id=\""
                     if dir_r == 1:
                         veh_str += "L"
+                        lane_r = 2
                     elif dir_r == 2:
                         veh_str += "S"
+                        lane_r = 1
                     elif dir_r == 3:
                         veh_str += "R"
+                        lane_r = 0
 
                     dst_direction = (in_direction-1 + dir_r)%4 + 1
                     if dst_direction == 3:
@@ -97,17 +101,21 @@ def generate_routefile(arrival_rate):
                 if random.uniform(0, 1) < dir_prob[in_direction-1]:
                     #dir_r = random.randrange(3)+1
                     dir_r = numpy.random.choice(numpy.arange(1, 4), p=turn_prob)
-                    lane_r = random.randrange(cfg.LANE_NUM_PER_DIRECTION)
+                    #lane_r = random.randrange(cfg.LANE_NUM_PER_DIRECTION)
+                    lane_r = 0
                     car_length = random.randrange(5,10)
 
 
                     veh_str = "\t<vehicle id=\""
                     if dir_r == 1:
                         veh_str += "L"
+                        lane_r = 2
                     elif dir_r == 2:
                         veh_str += "S"
+                        lane_r = 1
                     elif dir_r == 3:
                         veh_str += "R"
+                        lane_r = 0
 
                     dst_direction = (in_direction-1 + dir_r)%4 + 1
                     if dst_direction == 1:

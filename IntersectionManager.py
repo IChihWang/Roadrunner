@@ -51,6 +51,7 @@ class IntersectionManager:
         # Spill-back info
         self.my_road_info = [{'avail_len':cfg.TOTAL_LEN, 'delay':0} for i in range(4*cfg.LANE_NUM_PER_DIRECTION)] # For updating the available road info
         self.others_road_info = [None]*(4*cfg.LANE_NUM_PER_DIRECTION)   # Reference to read others road info
+        self.spillback_delay_record = [0]*(4*cfg.LANE_NUM_PER_DIRECTION)
 
         self.set_round_lane()
 
@@ -290,7 +291,7 @@ class IntersectionManager:
 
                 others_road_info = copy.deepcopy(self.others_road_info)
 
-                self.scheduling_thread = threading.Thread(target = Scheduling, args = (self.lane_advisor, sched_car, n_sched_car, advised_n_sched_car, self.cc_list, self.car_list, self.pedestrian_time_mark_list, self.schedule_period_count, others_road_info))
+                self.scheduling_thread = threading.Thread(target = Scheduling, args = (self.lane_advisor, sched_car, n_sched_car, advised_n_sched_car, self.cc_list, self.car_list, self.pedestrian_time_mark_list, self.schedule_period_count, others_road_info, self.spillback_delay_record))
                 self.scheduling_thread.start()
 
 
@@ -339,9 +340,15 @@ class IntersectionManager:
                 lane_sub_idx = (cfg.LANE_NUM_PER_DIRECTION-lane%cfg.LANE_NUM_PER_DIRECTION-1)
                 out_sub_lane = (cfg.LANE_NUM_PER_DIRECTION-lane%cfg.LANE_NUM_PER_DIRECTION-1)
 
+                '''
                 if car.turning == 'R':
                     out_sub_lane = 0
                 elif car.turning == 'L':
+                    out_sub_lane = cfg.LANE_NUM_PER_DIRECTION-1
+                '''
+                if car.ID[1] == 'R':
+                    out_sub_lane = 0
+                elif car.ID[1] == 'L':
                     out_sub_lane = cfg.LANE_NUM_PER_DIRECTION-1
 
                 car.dst_lane = car.out_dir*cfg.LANE_NUM_PER_DIRECTION + out_sub_lane
@@ -379,6 +386,8 @@ class IntersectionManager:
             lane_idx = car.dst_lane
             if self.others_road_info[lane_idx] != None:
                 accumulate_car_len_lane[lane_idx] += (car.length + cfg.HEADWAY)
+            if car.is_spillback == True:
+                spillback_lane_advise_avoid[lane_idx] = True
 
         for lane_idx in range(4*cfg.LANE_NUM_PER_DIRECTION):
             if self.others_road_info[lane_idx] != None:
@@ -394,6 +403,9 @@ class IntersectionManager:
                 traci.vehicle.setMinGap(car_id, cfg.HEADWAY)
                 #traci.vehicle.setLaneChangeMode(car_id, 256)
                 traci.vehicle.setLaneChangeMode(car_id, 784)
+                #traci.vehicle.setLaneChangeMode(car_id, 528)
+                #traci.vehicle.setLaneChangeMode(car_id, 800)
+                #traci.vehicle.setLaneChangeMode(car_id, 544)
                 # 256 (collision avoidance) or 512 (collision avoidance and safety-gap enforcement)
 
                 #time_in_AZ = cfg.AZ_LEN/cfg.MAX_SPEED *3
@@ -479,10 +491,10 @@ class IntersectionManager:
 
 ##########################
 # Scheduling thread that handles scheduling and update the table for lane advising
-def Scheduling(lane_advisor, sched_car, n_sched_car, advised_n_sched_car, cc_list, car_list, pedestrian_time_mark_list, schedule_period_count, others_road_info):
+def Scheduling(lane_advisor, sched_car, n_sched_car, advised_n_sched_car, cc_list, car_list, pedestrian_time_mark_list, schedule_period_count, others_road_info, spillback_delay_record):
 
     if int(sys.argv[3]) == 0:
-        IcaccPlus(sched_car, n_sched_car, advised_n_sched_car, pedestrian_time_mark_list, others_road_info)
+        IcaccPlus(sched_car, n_sched_car, advised_n_sched_car, pedestrian_time_mark_list, others_road_info, spillback_delay_record)
     elif int(sys.argv[3]) == 1:
         Icacc(sched_car, n_sched_car)
     elif int(sys.argv[3]) == 2:

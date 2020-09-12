@@ -59,7 +59,7 @@ def run():
                 break
             #'''
             #if 'L_1383' in intersection_manager.car_list:
-            if (simu_step*10)//1/10.0 == 1360:
+            #if (simu_step*10)//1/10.0 == 1360:
                 '''
                 car = intersections[1].car_list['LR_808']
                 print(car.ID, car.zone, car.zone_state, car.CC_state)
@@ -68,7 +68,7 @@ def run():
                 print(car.ID, car.zone, car.zone_state, car.CC_state)
                 '''
 
-                raw_input()
+                #raw_input()
             #'''
 
             '''

@@ -129,7 +129,7 @@ class LaneAdviser:
                 ideal_lane = start_lane+(cfg.LANE_NUM_PER_DIRECTION//2)
             advise_lane = ideal_lane
 
-            print("ADV: ", car.ID, advise_lane)
+            #print("ADV: ", car.ID, advise_lane)
             # The lane is chosen, update the matrix update giving the lane advice
             self.updateTableAfterAdvise(advise_lane, car.turning, car.length, self.timeMatrix)
             # Record the given lane
