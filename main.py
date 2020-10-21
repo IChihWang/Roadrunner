@@ -59,7 +59,7 @@ def run():
                 break
             #'''
             #if 'L_1383' in intersection_manager.car_list:
-            #if (simu_step*10)//1/10.0 == 1360:
+            #if (simu_step*10)//1/10.0 == 900:
                 '''
                 car = intersections[1].car_list['LR_808']
                 print(car.ID, car.zone, car.zone_state, car.CC_state)
@@ -180,9 +180,11 @@ if __name__ == "__main__":
                                  "--tripinfo-output", "tripinfo.xml","--step-length", str(cfg.TIME_STEP),
                                  "--collision.mingap-factor", "0",
                                  "--default.speeddev", "1",
-                                 "--log", "error_log.txt"])
+                                 "--log", "error_log.txt",
+                                 "--threads", "8"], numRetries=100)
 
         # 4. Start running SUMO
+        print("here")
         run()
-    except:
-        None
+    except Exception as e:
+        traceback.print_exc()
