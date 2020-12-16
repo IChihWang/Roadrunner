@@ -184,7 +184,6 @@ if __name__ == "__main__":
                                  "--threads", "8"], numRetries=100)
 
         # 4. Start running SUMO
-        print("here")
         run()
     except Exception as e:
         traceback.print_exc()

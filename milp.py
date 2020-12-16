@@ -234,7 +234,8 @@ def IcaccPlus(old_cars, new_cars, advised_n_sched_car, pedestrian_time_mark_list
                         #spillback_delay = base_delay + recorded_delay*spillback_delay_multiply_factor
 
                         #spillback_delay_multiply_factor = accumulate_car_len//(cfg.TOTAL_LEN/2)
-                        spillback_delay_multiply_factor = accumulate_car_len/(cfg.TOTAL_LEN/2)
+                        #spillback_delay_multiply_factor = accumulate_car_len/(cfg.TOTAL_LEN/2)
+                        spillback_delay_multiply_factor = accumulate_car_len/(cfg.CCZ_LEN+cfg.BZ_LEN)
                         #spillback_delay = base_delay + recorded_delay*spillback_delay_multiply_factor
                         #spillback_delay = base_delay+recorded_delay*spillback_delay_multiply_factor
                         spillback_delay = recorded_delay*spillback_delay_multiply_factor

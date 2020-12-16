@@ -32,7 +32,7 @@ class Car:
         self.length = length
         self.turning = turning
 
-        self.in_dir = lane / cfg.LANE_NUM_PER_DIRECTION
+        self.in_dir = lane // cfg.LANE_NUM_PER_DIRECTION
         self.out_dir = None
         if turning == 'S':
             self.out_dir = (self.in_dir+2)%4
@@ -64,7 +64,7 @@ class Car:
             out_sub_lane = 0
         elif turning == 'L':
             out_sub_lane = cfg.LANE_NUM_PER_DIRECTION-1
-        self.dst_lane = self.out_dir*cfg.LANE_NUM_PER_DIRECTION + out_sub_lane
+        self.dst_lane = int(self.out_dir*cfg.LANE_NUM_PER_DIRECTION + out_sub_lane)
 
         # Position: how far between it and the intersection (0 at the entry of intersection)
         self.position = cfg.AZ_LEN + cfg.PZ_LEN + cfg.GZ_LEN+ cfg.BZ_LEN + cfg.CCZ_LEN
