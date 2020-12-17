@@ -97,7 +97,7 @@ class IntersectionManager:
                 self.car_list[car_id].zone = "CCZ"
 
 
-    def run(self, simu_step):
+    def run(self, simu_step, is_slowdown_control):
 
         # ===== Update the time OT =====
         for car_key in self.car_list:
@@ -165,8 +165,9 @@ class IntersectionManager:
                 self.ccz_list[car_id] = car
                 to_be_deleted.append(car_id)
 
-                if (car.CC_state == "Preseting_done"):
-                    car.CC_state = "CruiseControl_ready"
+                if is_slowdown_control == True:
+                    if (car.CC_state == "Preseting_done"):
+                        car.CC_state = "CruiseControl_ready"
 
         for car_id in to_be_deleted:
             del self.pz_list[car_id]

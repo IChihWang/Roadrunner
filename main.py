@@ -74,7 +74,11 @@ def run():
                 lane_id = traci.vehicle.getLaneID(car_id)
                 intersection_manager.update_car(car_id, lane_id, simu_step)
 
-            intersection_manager.run(simu_step)
+            is_slowdown_control = False
+            if sys.argv[4] == 'T':
+                is_slowdown_control = True
+
+            intersection_manager.run(simu_step, is_slowdown_control)
             simu_step += cfg.TIME_STEP
     except Exception as e:
         traceback.print_exc()
@@ -82,7 +86,7 @@ def run():
 
     #debug_t = threading.Thread(target=debug_ring)
     #debug_t.start()
-    print(sys.argv[1], int(sys.argv[2]), int(sys.argv[3]))
+    print(sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), sys.argv[4])
 
     # Print out the measurements
     #print("Average total delay: ", total_delays/car_num)
@@ -112,7 +116,7 @@ def get_options():
 ###########################
 # Main function
 if __name__ == "__main__":
-    print("Usage: python code.py <arrival_rate (0~1.0)> <seed> <schedular>")
+    print("Usage: python code.py <arrival_rate (0~1.0)> <seed> <schedular> <is_slowdown_control T/F>")
 
     seed = int(sys.argv[2])
     random.seed(seed)  # make tests reproducible
