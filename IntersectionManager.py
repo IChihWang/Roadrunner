@@ -3,6 +3,7 @@ import sys
 import config as cfg
 import traci
 import threading
+import time
 
 
 from Cars import Car
@@ -45,6 +46,10 @@ class IntersectionManager:
         # Pedestrian control
         self.is_pedestrian_list = [False]*4         # Whether there is a pedestrian request
         self.pedestrian_time_mark_list = [None]*4      # Planned pedestrian time (In case some cars insterted and interrupt the pedestiran time)
+
+        self.schedule_time = []
+        self.advice_time = []
+        self.CControl_time = []
 
 
         self.set_round_lane()
@@ -222,7 +227,15 @@ class IntersectionManager:
                         traci.vehicle.setColor(car.ID, (255,59,59))
                 '''
 
-                self.scheduling_thread = threading.Thread(target = Scheduling, args = (self.lane_advisor, sched_car, n_sched_car, advised_n_sched_car, self.cc_list, self.car_list, self.pedestrian_time_mark_list, self.schedule_period_count))
+                self.scheduling_thread = threading.Thread(target = Scheduling,
+                                                        args = (self.lane_advisor,
+                                                                sched_car, n_sched_car,
+                                                                advised_n_sched_car,
+                                                                self.cc_list,
+                                                                self.car_list,
+                                                                self.pedestrian_time_mark_list,
+                                                                self.schedule_period_count,
+                                                                self.schedule_time))
                 self.scheduling_thread.start()
 
 
@@ -267,10 +280,11 @@ class IntersectionManager:
         sorted_ccontrol_list = sorted(ccontrol_list.items(), key=lambda x: x[1].position)
         # SUPER IMPORTANT: sorted to ensure the following car speed
         for car_id, car in sorted_ccontrol_list:
-
+            start = time.time()
             # Cars perform their own CC
             car.handle_CC_behavior(self.car_list)
-
+            end = time.time()
+            self.CControl_time.append(end - start)
 
 
         ################################################
@@ -286,11 +300,14 @@ class IntersectionManager:
 
                 time_in_AZ = cfg.AZ_LEN/cfg.MAX_SPEED *3
 
-
+                start = time.time()
                 #advised_lane = self.lane_advisor.adviseLaneShortestTrajectory(car)
                 advised_lane = self.lane_advisor.adviseLane(self.car_list[car_id])
                 #advised_lane = self.lane_advisor.adviseLane_v2(self.car_list[car_id])
                 #advised_lane = random.randrange(0, cfg.LANE_NUM_PER_DIRECTION)
+                end = time.time()
+
+                self.advice_time.append(end - start)
 
                 traci.vehicle.changeLane(car_id, advised_lane, time_in_AZ)
                 car.desired_lane = (cfg.LANE_NUM_PER_DIRECTION-advised_lane-1)+(car.lane//cfg.LANE_NUM_PER_DIRECTION)*cfg.LANE_NUM_PER_DIRECTION
@@ -358,8 +375,12 @@ class IntersectionManager:
 
 ##########################
 # Scheduling thread that handles scheduling and update the table for lane advising
-def Scheduling(lane_advisor, sched_car, n_sched_car, advised_n_sched_car, cc_list, car_list, pedestrian_time_mark_list, schedule_period_count):
+def Scheduling(lane_advisor, sched_car, n_sched_car,
+                advised_n_sched_car, cc_list, car_list,
+                pedestrian_time_mark_list, schedule_period_count,
+                schedule_time):
 
+    start = time.time()
     if int(sys.argv[3]) == 0:
         IcaccPlus(sched_car, n_sched_car, pedestrian_time_mark_list)
     elif int(sys.argv[3]) == 1:
@@ -378,3 +399,7 @@ def Scheduling(lane_advisor, sched_car, n_sched_car, advised_n_sched_car, cc_lis
             pedestrian_time_mark_list[direction] -= schedule_period_count
         if pedestrian_time_mark_list[direction] < -cfg.PEDESTRIAN_TIME_GAP:
             pedestrian_time_mark_list[direction] = None
+
+
+    end = time.time()
+    schedule_time.append(end-start)

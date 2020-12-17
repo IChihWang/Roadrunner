@@ -27,6 +27,7 @@ import traci
 import traceback
 
 import config as cfg
+import csv
 
 from gen_route import generate_routefile
 
@@ -95,6 +96,19 @@ def run():
 
     print("avg_fuel = ",intersection_manager.total_fuel_consumption/intersection_manager.fuel_consumption_count)
 
+    file_name = 'result/result.csv'
+    with open(file_name, 'a', newline='') as csvfile:
+        writer = csv.writer(csvfile, dialect='excel-tab', quoting=csv.QUOTE_MINIMAL, delimiter = ',')
+        to_write = [sys.argv[1], sys.argv[2], sys.argv[3],
+                    sys.argv[4], "_", simu_step, intersection_manager.car_num,
+                    intersection_manager.total_delays/intersection_manager.car_num,
+                    intersection_manager.total_delays_by_sche/intersection_manager.car_num,
+                    intersection_manager.total_fuel_consumption/intersection_manager.fuel_consumption_count,
+                    sum(intersection_manager.schedule_time)/len(intersection_manager.schedule_time),
+                    sum(intersection_manager.advice_time)/len(intersection_manager.advice_time),
+                    sum(intersection_manager.CControl_time)/len(intersection_manager.CControl_time)]
+        writer.writerow(to_write)
+
     sys.stdout.flush()
 
     traci.close()
@@ -129,6 +143,7 @@ if __name__ == "__main__":
         sumoBinary = checkBinary('sumo')
     else:
         sumoBinary = checkBinary('sumo-gui')
+    sumoBinary = checkBinary('sumo')
 
     # 0. Generate the intersection information files
     os.system("bash gen_intersection/gen_data.sh " + str(cfg.LANE_NUM_PER_DIRECTION))
