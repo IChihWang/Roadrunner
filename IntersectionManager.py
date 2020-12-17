@@ -110,12 +110,12 @@ class IntersectionManager:
 
 
         # ===== Entering the intersection (Record the cars) =====
+        to_be_deleted = []
         for car_id, car in self.car_list.items():
             lane_id = traci.vehicle.getLaneID(car_id)
             if lane_id not in self.in_lanes:
                 traci.vehicle.setSpeed(car_id, car.speed_in_intersection)
-
-                del self.ccz_list[car_id]
+                to_be_deleted.append(car_id)
 
                 self.leaving_cars[car_id] = self.car_list[car_id]
                 self.car_list[car_id].Leave_T = simu_step
@@ -125,7 +125,6 @@ class IntersectionManager:
                 self.total_delays_by_sche += car.D
                 self.car_num += 1
 
-                self.car_list.pop(car_id)
                 car.zone == "Intersection"
 
                 if car.D+car.OT <= -0.4 or car.D+car.OT >= 0.4:
@@ -139,24 +138,38 @@ class IntersectionManager:
                     print("=======")
                     print("-----------------")
 
+        for car_id in to_be_deleted:
+            del self.ccz_list[car_id]
+            self.car_list.pop(car_id)
+
+
 
         # ===== Leaving the intersection (Reset the speed to V_max) =====
+        to_be_deleted = []
         for car_id, car in self.leaving_cars.items():
             lane_id = traci.vehicle.getLaneID(car_id)
             if lane_id in self.out_lanes:
                 traci.vehicle.setSpeed(car_id, cfg.MAX_SPEED)
-                del self.leaving_cars[car_id]
+                to_be_deleted.append(car_id)
+
+        for car_id in to_be_deleted:
+            del self.leaving_cars[car_id]
+
 
 
         # ===== Starting Cruise control
+        to_be_deleted = []
         for car_id, car in self.pz_list.items():
             if car.position <= cfg.CCZ_LEN and isinstance(car.D, float):
 
                 self.ccz_list[car_id] = car
-                del self.pz_list[car_id]
+                to_be_deleted.append(car_id)
 
                 if (car.CC_state == "Preseting_done"):
                     car.CC_state = "CruiseControl_ready"
+
+        for car_id in to_be_deleted:
+            del self.pz_list[car_id]
 
 
 
@@ -166,7 +179,7 @@ class IntersectionManager:
         # Put here due to the thread handling
         self.schedule_period_count += cfg.TIME_STEP
         if self.schedule_period_count > cfg.GZ_LEN/cfg.MAX_SPEED -1:
-            if self.scheduling_thread == None or (not self.scheduling_thread.isAlive()):
+            if self.scheduling_thread == None or (not self.scheduling_thread.is_alive()):
 
                 # Classify the cars for scheduler
                 sched_car = []
@@ -195,7 +208,7 @@ class IntersectionManager:
                     if self.is_pedestrian_list[direction] == True and self.pedestrian_time_mark_list[direction] != None:
                         self.is_pedestrian_list[direction] = False
                 self.pedestrian_time_mark_list = self.get_max_AT_direction(sched_car, self.is_pedestrian_list, self.pedestrian_time_mark_list)
-                print(self.pedestrian_time_mark_list)
+                #print(self.pedestrian_time_mark_list)
 
                 '''
                 print(len(n_sched_car))
@@ -224,11 +237,12 @@ class IntersectionManager:
 
         ################################################
         # Set Max Speed in PZ
+        to_be_deleted = []
         for car_id, car in self.az_list.items():
             if car.zone == "PZ" and car.zone_state == "PZ_not_set":
                 traci.vehicle.setMinGap(car_id, cfg.HEADWAY)
                 self.pz_list[car_id] = car
-                del self.az_list[car_id]
+                to_be_deleted.append(car_id)
 
                 # Take over the speed control from the car
                 traci.vehicle.setSpeedMode(car_id, 0)
@@ -236,6 +250,8 @@ class IntersectionManager:
 
                 car.zone_state = "PZ_set"
 
+        for car_id in to_be_deleted:
+            del self.az_list[car_id]
 
 
 
@@ -302,7 +318,7 @@ class IntersectionManager:
                 traci.vehicle.setLaneChangeMode(car_id, 512)
                 # Keep the car on the same lane
                 lane_id = traci.vehicle.getLaneID(car_id)
-                lane = ((4-int(lane_id[0]))*cfg.LANE_NUM_PER_DIRECTION) + (cfg.LANE_NUM_PER_DIRECTION-int(lane_id[2])-1)
+                lane = int(((4-int(lane_id[0]))*cfg.LANE_NUM_PER_DIRECTION) + (cfg.LANE_NUM_PER_DIRECTION-int(lane_id[2])-1))
                 self.car_list[car_id].lane = lane
                 # Stay on its lane
                 traci.vehicle.changeLane(car_id, int(lane_id[2]), 1.0)

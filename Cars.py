@@ -32,7 +32,7 @@ class Car:
         self.length = length
         self.turning = turning
 
-        self.in_dir = lane / cfg.LANE_NUM_PER_DIRECTION
+        self.in_dir = lane // cfg.LANE_NUM_PER_DIRECTION
         self.out_dir = None
         if turning == 'S':
             self.out_dir = (self.in_dir+2)%4
