@@ -7,7 +7,7 @@ import time
 
 
 from Cars import Car
-from milp import Icacc, IcaccPlus, Fcfs, FixedSignal
+from milp import Icacc, IcaccPlus, Fcfs, FixedSignal, Fcfs_not_reservation
 from LaneAdviser import LaneAdviser
 from get_inter_length_info import Data
 
@@ -386,7 +386,9 @@ def Scheduling(lane_advisor, sched_car, n_sched_car,
     elif int(sys.argv[3]) == 1:
         Icacc(sched_car, n_sched_car)
     elif int(sys.argv[3]) == 2:
-        Fcfs(sched_car, n_sched_car)
+        Fcfs(sched_car, n_sched_car, pedestrian_time_mark_list)
+    elif int(sys.argv[3]) == 3:
+        Fcfs_not_reservation(sched_car, n_sched_car)
 
     lane_advisor.updateTableFromCars(n_sched_car, advised_n_sched_car)
 

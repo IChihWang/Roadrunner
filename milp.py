@@ -425,11 +425,18 @@ def IcaccPlus(old_cars, new_cars, pedestrian_time_mark_list):
     return avg_delay
 
 
-def Fcfs(old_cars, new_cars):
+def Fcfs(old_cars, new_cars, pedestrian_time_mark_list):
     sorted_new = sorted(new_cars, key=lambda k: k.position)
 
     for car in sorted_new:
-        IcaccPlus(old_cars, [car])
+        IcaccPlus(old_cars, [car], pedestrian_time_mark_list)
+        old_cars.append(car)
+
+def Fcfs_not_reservation(old_cars, new_cars):
+    sorted_new = sorted(new_cars, key=lambda k: k.position)
+
+    for car in sorted_new:
+        Icacc(old_cars, [car])
         old_cars.append(car)
 
 
