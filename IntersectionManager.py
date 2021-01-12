@@ -23,6 +23,8 @@ class IntersectionManager:
 
         self.car_list = dict()   # Cars that needs to be handled
         self.cc_list = dict()    # Cars under Cruse Control in CCZ
+        self.leaving_cars = dict()   # Cars just entered the intersection (leave the CC zone)
+
 
         self.schedule_period_count = 0
         self.lane_advisor = LaneAdviser()
@@ -44,8 +46,25 @@ class IntersectionManager:
         self.total_fuel_consumption = 0
         self.fuel_consumption_count = 0
 
+        # Spill-back info
+        self.my_road_info = [{'avail_len':cfg.TOTAL_LEN, 'delay':0} for i in range(4*cfg.LANE_NUM_PER_DIRECTION)] # For updating the available road info
+        self.others_road_info = [None]*(4*cfg.LANE_NUM_PER_DIRECTION)   # Reference to read others road info
+        self.spillback_delay_record = [0]*(4*cfg.LANE_NUM_PER_DIRECTION)
 
         self.set_round_lane()
+
+    def connect(self, my_direction, intersection, its_direction):
+        '''
+                2
+            3   i   1
+                0
+        '''
+        for lane_idx in range(cfg.LANE_NUM_PER_DIRECTION):
+            my_lane = my_direction*cfg.LANE_NUM_PER_DIRECTION+lane_idx
+            its_lane = its_direction*cfg.LANE_NUM_PER_DIRECTION+(cfg.LANE_NUM_PER_DIRECTION-lane_idx-1)
+
+            self.others_road_info[my_lane] = intersection.my_road_info[its_lane]
+            intersection.others_road_info[its_lane] = self.my_road_info[my_lane]
 
 
     def set_round_lane(self):
@@ -257,12 +276,13 @@ class IntersectionManager:
 
 
         # ===== Entering the intersection (Record the cars) =====
+        to_be_deleted = []
         for car_id, car in self.car_list.items():
             lane_id = traci.vehicle.getLaneID(car_id)
             if lane_id not in self.in_lanes:
                 traci.vehicle.setSpeed(car_id, car.speed_in_intersection)
 
-                del self.ccz_list[car_id]
+                to_be_deleted.append(car_id)
 
 
                 self.car_list[car_id].Leave_T = simu_step
@@ -272,7 +292,6 @@ class IntersectionManager:
                 self.total_delays_by_sche += car.D
                 self.car_num += 1
 
-                self.car_list.pop(car_id)
                 car.zone = "Intersection"
 
                 if car.D+car.OT <= -0.4 or car.D+car.OT >= 0.4:
@@ -285,19 +304,25 @@ class IntersectionManager:
                     print("OT", car.OT)
                     print("=======")
                     print("-----------------")
-
+        for car_id in to_be_deleted:
+            del self.ccz_list[car_id]
+            self.car_list.pop(car_id)
 
 
 
         # ===== Starting Cruise control
+        to_be_deleted = []
         for car_id, car in self.pz_list.items():
             if car.position <= cfg.CCZ_LEN and isinstance(car.D, float):
 
                 self.ccz_list[car_id] = car
-                del self.pz_list[car_id]
+                to_be_deleted.append(car_id)
 
                 if (car.CC_state == None):
                     car.CC_state = "CruiseControl_ready"
+
+        for car_id in to_be_deleted:
+            del self.pz_list[car_id]
 
 
 
@@ -328,7 +353,9 @@ class IntersectionManager:
                     traci.vehicle.setColor(n_sched_car[c_idx].ID, (100,250,92))
                     n_sched_car[c_idx].D = None
 
-                self.scheduling_thread = threading.Thread(target = Scheduling, args = (self.lane_advisor, sched_car, n_sched_car, advised_n_sched_car, self.cc_list, self.car_list))
+                others_road_info = copy.deepcopy(self.others_road_info)
+
+                self.scheduling_thread = threading.Thread(target = Scheduling, args = (self.lane_advisor, sched_car, n_sched_car, advised_n_sched_car, self.cc_list, self.car_list, self.schedule_period_count, others_road_info, self.spillback_delay_record))
                 self.scheduling_thread.start()
 
 
@@ -344,11 +371,12 @@ class IntersectionManager:
 
         ################################################
         # Set Max Speed in PZ
+        to_be_deleted = []
         for car_id, car in self.az_list.items():
             if car.zone == "PZ" and car.zone_state == "PZ_not_set":
                 traci.vehicle.setMinGap(car_id, cfg.HEADWAY)
                 self.pz_list[car_id] = car
-                del self.az_list[car_id]
+                to_be_deleted.append(car_id)
 
                 # Take over the speed control from the car
                 traci.vehicle.setSpeedMode(car_id, 0)
@@ -358,20 +386,40 @@ class IntersectionManager:
                 # Cancel the auto gap
                 traci.vehicle.setLaneChangeMode(car_id, 0)
 
-                lane_id = traci.vehicle.getLaneID(car_id)
-                lane_data = lane_id.split("_")
-                lane_direction = int(lane_data[2])
-                lane_sub_idx = int(lane_data[3])
-                lane = (4-lane_direction)*cfg.LANE_NUM_PER_DIRECTION + (cfg.LANE_NUM_PER_DIRECTION-lane_sub_idx-1)
-
-                self.car_list[car_id].lane = lane
+                lane = car.lane
+                car.desired_lane = car.lane
+                lane_sub_idx = (cfg.LANE_NUM_PER_DIRECTION-lane%cfg.LANE_NUM_PER_DIRECTION-1)
 
                 # Stay on its lane
-                traci.vehicle.changeLane(car_id, lane_sub_idx, 10.0)
+                traci.vehicle.changeLane(car_id, lane_sub_idx, 1.0)
 
 
                 car.zone_state = "PZ_set"
+        for car_id in to_be_deleted:
+            del self.az_list[car_id]
 
+        # Set Max Speed in PZ
+        for car_id, car in self.pz_list.items():
+            if car.zone == "PZ" and car.zone_state == "PZ_set":
+                lane = car.lane
+                car.desired_lane = car.lane
+
+                lane_sub_idx = (cfg.LANE_NUM_PER_DIRECTION-lane%cfg.LANE_NUM_PER_DIRECTION-1)
+
+                TODO: set out lane based on the path
+                '''
+                out_sub_lane = (cfg.LANE_NUM_PER_DIRECTION-lane%cfg.LANE_NUM_PER_DIRECTION-1)
+
+                if car.ID[1] == 'R':
+                    out_sub_lane = 0
+                elif car.ID[1] == 'L':
+                    out_sub_lane = cfg.LANE_NUM_PER_DIRECTION-1
+
+                car.dst_lane = int(car.out_dir*cfg.LANE_NUM_PER_DIRECTION + out_sub_lane)
+                '''
+
+                # Stay on its lane
+                traci.vehicle.changeLane(car_id, lane_sub_idx, 1.0)
 
         ##########################################
         # Cruse Control
@@ -382,31 +430,49 @@ class IntersectionManager:
         # SUPER IMPORTANT: sorted to ensure the following car speed
         for car_id, car in sorted_ccontrol_list:
             # Cars perform their own CC
-            car.handle_CC_behavior(self.car_list)
+            if car.zone != None:
+                car.handle_CC_behavior(self.car_list)
 
 
 
         ################################################
         # Change lane in AZ
+
+        # Check whether there is a spillback
+        accumulate_car_len_lane = [0]*(4*cfg.LANE_NUM_PER_DIRECTION)
+        spillback_lane_advise_avoid = [False]*(4*cfg.LANE_NUM_PER_DIRECTION)
+
+        for car_id, car in self.car_list.items():
+            lane_idx = car.dst_lane
+            #print(lane_idx)
+            if self.others_road_info[lane_idx] != None:
+                accumulate_car_len_lane[lane_idx] += (car.length + cfg.HEADWAY)
+            if car.is_spillback == True:
+                spillback_lane_advise_avoid[lane_idx] = True
+
+        for lane_idx in range(4*cfg.LANE_NUM_PER_DIRECTION):
+            if self.others_road_info[lane_idx] != None:
+                if accumulate_car_len_lane[lane_idx] >= self.others_road_info[lane_idx]['avail_len']:
+                    spillback_lane_advise_avoid[lane_idx] = True
+
+
         for car_id, car in self.car_list.items():
             if car.zone == "AZ" and car.zone_state == "AZ_not_advised":
                 self.az_list[car_id] = car
 
                 traci.vehicle.setMinGap(car_id, cfg.HEADWAY)
-                #traci.vehicle.setLaneChangeMode(car_id, 256)
-                traci.vehicle.setLaneChangeMode(car_id, 272)
-                # 256 (collision avoidance) or 512 (collision avoidance and safety-gap enforcement)
+                traci.vehicle.setLaneChangeMode(car_id, 784)
 
-                time_in_AZ = cfg.AZ_LEN/cfg.MAX_SPEED *3
+                time_in_AZ = 9999.91
 
 
                 #advised_lane = self.lane_advisor.adviseLaneShortestTrajectory(car)
-                advised_lane = self.lane_advisor.adviseLane(self.car_list[car_id])
+                advised_lane = self.lane_advisor.adviseLane(self.car_list[car_id], spillback_lane_advise_avoid)
                 #advised_lane = self.lane_advisor.adviseLane_v2(self.car_list[car_id])
                 #advised_lane = random.randrange(0, cfg.LANE_NUM_PER_DIRECTION)
 
                 traci.vehicle.changeLane(car_id, advised_lane, time_in_AZ)
-                car.desired_lane = (cfg.LANE_NUM_PER_DIRECTION-advised_lane-1)+(car.lane//cfg.LANE_NUM_PER_DIRECTION)*cfg.LANE_NUM_PER_DIRECTION
+                car.desired_lane = int((cfg.LANE_NUM_PER_DIRECTION-advised_lane-1)+(car.lane//cfg.LANE_NUM_PER_DIRECTION)*cfg.LANE_NUM_PER_DIRECTION)
                 #self.car_list[car_id].desired_lane = car.lane
 
                 car.zone_state = "AZ_advised"
@@ -427,22 +493,31 @@ class IntersectionManager:
                         min_gap = max(cfg.HEADWAY, min_distance+cfg.HEADWAY)
                         traci.vehicle.setMinGap(car_id, min_gap)
 
+        ##########################################
+        # Update the road info after actions
+        car_accumulate_len_lane = [0]*(cfg.LANE_NUM_PER_DIRECTION*4)
+        delay_lane = [0]*(cfg.LANE_NUM_PER_DIRECTION*4)
+        car_position_with_delay_lane = [0]*(cfg.LANE_NUM_PER_DIRECTION*4)
+        for car_id, car in self.car_list.items():
+            lane = car.lane
+            car_accumulate_len_lane[lane] += car.length + cfg.HEADWAY
 
+            if car.position > car_position_with_delay_lane[lane] and isinstance(car.D, float):
+                car_position_with_delay_lane[lane] = car.position
+                #delay_lane[lane] = (car.OT+car.D)-(car.position/cfg.MAX_SPEED)
+                delay_lane[lane] = car.D
+
+        for lane_idx in range(4*cfg.LANE_NUM_PER_DIRECTION):
+            self.my_road_info[lane_idx]['avail_len'] = cfg.TOTAL_LEN - car_accumulate_len_lane[lane_idx]
+            self.my_road_info[lane_idx]['delay'] = delay_lane[lane_idx]
+        #print(self.ID, self.others_road_info)
 
 
 ##########################
 # Scheduling thread that handles scheduling and update the table for lane advising
-def Scheduling(lane_advisor, sched_car, n_sched_car, advised_n_sched_car, cc_list, car_list):
-    '''
-    if int(sys.argv[3]) == 0:
-        IcaccPlus(sched_car, n_sched_car)
-    elif int(sys.argv[3]) == 1:
-        Icacc(sched_car, n_sched_car)
-    elif int(sys.argv[3]) == 2:
-        Fcfs(sched_car, n_sched_car)
-    '''
+def Scheduling(lane_advisor, sched_car, n_sched_car, advised_n_sched_car, cc_list, car_list, schedule_period_count, others_road_info, spillback_delay_record):
 
-    IcaccPlus(sched_car, n_sched_car)
+    IcaccPlus(sched_car, n_sched_car, advised_n_sched_car, others_road_info, spillback_delay_record)
 
     lane_advisor.updateTableFromCars(n_sched_car, advised_n_sched_car)
 

@@ -103,7 +103,7 @@ def worker(sock, server_send_str):
                         current_intersection = car_intersection_id_dict[car_id]
                         if current_intersection in car_path_dict[car_id]:
                             node_turn_dict[current_intersection] = car_path_dict[car_id][current_intersection]
-                            
+
                     car_path_to_write[car_id] = node_turn_dict
     except Exception as e:
         traceback.print_exc()
@@ -129,12 +129,21 @@ def run():
 
     # Create a list with intersection managers
     intersection_manager_list = []
+    intersection_manager_dict = dict()
     for idx in range(1, cfg.INTER_SIZE+1):
         for jdx in range(1, cfg.INTER_SIZE+1):
-            intersection_manager_id = "00%i"%(idx) + "_" + "00%i"%(jdx)
+            intersection_manager_id = "%3.3o"%(idx) + "_" + "%3.3o"%(jdx)
             intersection_manager = IntersectionManager(intersection_manager_id)
             intersection_manager_list.append(intersection_manager)
+            intersection_manager_dict[(idx, jdx)] = intersection_manager
 
+    for idx in range(1, cfg.INTER_SIZE+1):
+        for jdx in range(1, cfg.INTER_SIZE+1):
+            if idx <= cfg.INTER_SIZE-1:
+                intersection_manager_dict[(idx, jdx)].connect(1, intersection_manager_dict[(idx+1, jdx)], 3)
+
+            if jdx <= cfg.INTER_SIZE-1:
+                intersection_manager_dict[(idx, jdx)].connect(2, intersection_manager_dict[(idx, jdx+1)], 0)
 
 
     try:
