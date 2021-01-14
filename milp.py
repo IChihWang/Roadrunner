@@ -3,11 +3,12 @@ from get_inter_info import Data
 from ortools.linear_solver import pywraplp
 import config as cfg
 import copy
+import numpy
 
 
 data = Data()
 
-def Icacc(old_cars, new_cars):
+def Icacc(old_cars, new_cars, advised_n_sched_car, others_road_info, spillback_delay_record):
     # part 1: calculate OT
     for c_idx in range(len(new_cars)):
         OT = new_cars[c_idx].position/cfg.MAX_SPEED
@@ -17,12 +18,83 @@ def Icacc(old_cars, new_cars):
     solver = pywraplp.Solver('SolveIntegerProblem',pywraplp.Solver.CBC_MIXED_INTEGER_PROGRAMMING)
 
     # part 3: claim parameters
-    for c_idx in range(len(new_cars)):
-        if new_cars[c_idx].turning == 'S':
-            new_cars[c_idx].D = solver.NumVar(0, solver.infinity(), 'd'+str(c_idx))
+    car_count_src_dst_lane = [ [0]*len(others_road_info) for i in range(len(others_road_info))]
+    for car in advised_n_sched_car:
+        lane_idx = car.lane
+        dst_lane_idx = car.dst_lane
+        for l_idx in range(len(others_road_info)):
+            if l_idx != dst_lane_idx:
+                car_count_src_dst_lane[lane_idx][l_idx] += 1
+
+    # Sort new cars
+    new_car_src_dst_lane = [[[] for i in range(len(others_road_info))] for i in range(len(others_road_info))]
+    for car in new_cars:
+        lane_idx = car.lane
+        dst_lane_idx = car.dst_lane
+        new_car_src_dst_lane[lane_idx][dst_lane_idx].append(car)
+
+
+    accumulate_car_len_lane = [0]*(len(others_road_info))
+    last_car_delay_lane = [0]*(len(others_road_info))
+    for car in old_cars:
+        lane_idx = car.dst_lane
+        accumulate_car_len_lane[lane_idx] += (car.length + cfg.HEADWAY)
+
+        current_delay = (car.OT+car.D) - car.position/cfg.MAX_SPEED
+        if current_delay > last_car_delay_lane[lane_idx]:
+            last_car_delay_lane[lane_idx] = current_delay
+
+
+    for dst_lane_idx in range(len(others_road_info)):
+        # Doesn't connected to other intersections
+        if others_road_info[dst_lane_idx] == None:
+            for lane_idx in range(len(others_road_info)):
+                for car in new_car_src_dst_lane[lane_idx][dst_lane_idx]:
+                    if car.turning == 'S':
+                        car.D = solver.NumVar(0, solver.infinity(), 'd'+str(car.ID))
+                    else:
+                        min_d = (2*cfg.CCZ_DEC2_LEN/(cfg.MAX_SPEED+cfg.TURN_SPEED)) - (cfg.CCZ_DEC2_LEN/cfg.MAX_SPEED)
+                        car.D = solver.NumVar(min_d, solver.infinity(), 'd'+str(car.ID))
+
+        # Connected to other intersections
         else:
-            min_d = (2*cfg.CCZ_DEC2_LEN/(cfg.MAX_SPEED+cfg.TURN_SPEED)) - (cfg.CCZ_DEC2_LEN/cfg.MAX_SPEED)
-            new_cars[c_idx].D = solver.NumVar(min_d, solver.infinity(), 'd'+str(c_idx))
+            affected_car_count_list = [car_count_src_dst_lane[lane_idx][dst_lane_idx] for lane_idx in range(len(others_road_info))]
+            sorted_lane_idx_list = numpy.argsort(affected_car_count_list)
+
+            accumulate_car_len = accumulate_car_len_lane[dst_lane_idx]-others_road_info[dst_lane_idx]['avail_len']+(cfg.CAR_MAX_LEN+cfg.HEADWAY)
+            recorded_delay = max(others_road_info[dst_lane_idx]['delay'], spillback_delay_record[dst_lane_idx]) # To record the dispatch speed
+            base_delay = recorded_delay
+            for lane_idx in sorted_lane_idx_list:
+                for car in new_car_src_dst_lane[lane_idx][dst_lane_idx]:
+                    accumulate_car_len += (car.length + cfg.HEADWAY)
+                    spillback_delay = 0
+                    if accumulate_car_len > 0:
+
+                        #spillback_delay_multiply_factor = accumulate_car_len//(cfg.CCZ_LEN+cfg.BZ_LEN)
+                        #spillback_delay = base_delay + recorded_delay*spillback_delay_multiply_factor
+
+                        #spillback_delay_multiply_factor = accumulate_car_len//(cfg.TOTAL_LEN/2)
+                        #spillback_delay_multiply_factor = accumulate_car_len/(cfg.TOTAL_LEN/2)
+                        spillback_delay_multiply_factor = accumulate_car_len/(cfg.CCZ_LEN+cfg.BZ_LEN+cfg.GZ_LEN)
+                        #spillback_delay = base_delay + recorded_delay*spillback_delay_multiply_factor
+                        #spillback_delay = base_delay+recorded_delay*spillback_delay_multiply_factor
+                        spillback_delay = recorded_delay*spillback_delay_multiply_factor
+
+                        if last_car_delay_lane[dst_lane_idx] > spillback_delay:    # To make space with front batch
+                            base_delay = last_car_delay_lane[dst_lane_idx]
+                            last_car_delay_lane[dst_lane_idx] = -1       # Ensure that this is only called once
+                            accumulate_car_len = (car.length + cfg.HEADWAY)
+                            spillback_delay = base_delay
+                        car.is_spillback = True
+                        spillback_delay_record[dst_lane_idx] = recorded_delay
+                    else:
+                        spillback_delay_record[dst_lane_idx] = 0
+
+                    if new_cars[c_idx].turning == 'S':
+                        car.D = solver.NumVar(max(0, spillback_delay), solver.infinity(), 'd'+str(car.ID))
+                    else:
+                        min_d = (2*cfg.CCZ_DEC2_LEN/(cfg.MAX_SPEED+cfg.TURN_SPEED)) - (cfg.CCZ_DEC2_LEN/cfg.MAX_SPEED)
+                        car.D = solver.NumVar(max(min_d, spillback_delay), solver.infinity(), 'd'+str(car.ID))
 
 
     # part 4: set constrain (10)
@@ -439,14 +511,19 @@ def IcaccPlus(old_cars, new_cars, advised_n_sched_car, others_road_info, spillba
     return avg_delay
 
 
-def Fcfs(old_cars, new_cars):
+def Fcfs_reservation(old_cars, new_cars, advised_n_sched_car, others_road_info, spillback_delay_record):
     sorted_new = sorted(new_cars, key=lambda k: k.position)
 
     for car in sorted_new:
-        IcaccPlus(old_cars, [car])
+        IcaccPlus(old_cars, [car], advised_n_sched_car, others_road_info, spillback_delay_record)
         old_cars.append(car)
 
+def Fcfs(old_cars, new_cars, advised_n_sched_car, others_road_info, spillback_delay_record):
+    sorted_new = sorted(new_cars, key=lambda k: k.position)
 
+    for car in sorted_new:
+        Icacc(old_cars, [car], advised_n_sched_car, others_road_info, spillback_delay_record)
+        old_cars.append(car)
 
 def FixedSignal(old_cars, new_cars, iteration):
     for car in old_cars:

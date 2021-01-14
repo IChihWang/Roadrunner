@@ -4,11 +4,12 @@ import config as cfg
 import traci
 import threading
 import random
+import copy
 
 
 from Cars import Car
-from milp import Icacc, IcaccPlus, Fcfs, FixedSignal
-from LaneAdviser import LaneAdviser
+from milp import Icacc, IcaccPlus, Fcfs, Fcfs_reservation, FixedSignal
+#from LaneAdviser import LaneAdviser
 from get_inter_length_info import Data
 
 inter_length_data = Data()
@@ -27,7 +28,7 @@ class IntersectionManager:
 
 
         self.schedule_period_count = 0
-        self.lane_advisor = LaneAdviser()
+        #self.lane_advisor = LaneAdviser()
         self.scheduling_thread = None
         self.in_lanes = []
         self.out_lanes = []
@@ -126,8 +127,6 @@ class IntersectionManager:
             lane_sub_idx = int(lane_data[3])
             lane = ((4-lane_direction))*cfg.LANE_NUM_PER_DIRECTION + (cfg.LANE_NUM_PER_DIRECTION-lane_sub_idx-1)
 
-
-
             # Add car if the car is not in the list yet
             if car_id not in self.car_list:
                 # Gather the information of the new car
@@ -141,14 +140,6 @@ class IntersectionManager:
 
                 traci.vehicle.setSpeed(car_id, cfg.MAX_SPEED)
                 #traci.vehicle.setSpeedMode(car_id, 7)
-
-
-                '''
-                Debug for now:
-                    Randomly assign the directions
-                '''
-                #new_car.turning = random.choice(['R', 'S', 'L'])
-                #new_car.turning = car_turn
 
                 self.change_turning(car_id, car_turn, lane_direction)
 
@@ -184,84 +175,9 @@ class IntersectionManager:
                 self.car_list[car_id].turning = car_turn
                 self.change_turning(car_id, car_turn, lane_direction)
 
+            intersection_id = self.ID
 
-
-            # Decide the time offset
-            # On the road
-            time_offset = None
-            intersection_id = None              # After offset, which intersection/node
-            intersection_from_direction = None
-
-            if self.car_list[car_id].zone == None:
-                # Not yet enter Roadrunner
-                diff_pos = position - cfg.TOTAL_LEN
-                time_offset = diff_pos/cfg.MAX_SPEED
-
-
-                # Start from next intersection
-                if time_offset <= cfg.ROUTING_PERIOD:
-                    time_offset = None
-                else:
-                    # Decide the intersection id
-                    direction = lane//cfg.LANE_NUM_PER_DIRECTION
-                    intersection_from_direction = (direction+2)%4
-                    intersection_idx_list = self.ID.split("_")
-                    if intersection_from_direction == 2:
-                        intersection_idx_list[1] = "00%i"%(int(intersection_idx_list[1])-1)
-                    elif intersection_from_direction == 3:
-                        intersection_idx_list[0] = "00%i"%(int(intersection_idx_list[0])+1)
-                    elif intersection_from_direction == 0:
-                        intersection_idx_list[1] = "00%i"%(int(intersection_idx_list[1])+1)
-                    elif intersection_from_direction == 1:
-                        intersection_idx_list[0] = "00%i"%(int(intersection_idx_list[0])-1)
-
-                    intersection_id = intersection_idx_list[0] + "_" + intersection_idx_list[1]
-
-            if time_offset == None:
-                # Next intersection
-                if not isinstance(self.car_list[car_id].D, float):
-                    # Not computed yet
-                    time_offset = position/cfg.MAX_SPEED
-                else:
-                    time_offset = self.car_list[car_id].OT + self.car_list[car_id].D
-
-                # Add the time in the intersection
-                lane = None
-                if self.car_list[car_id].zone == "AZ":
-                    lane = self.car_list[car_id].desired_lane
-                else:
-                    lane = self.car_list[car_id].lane
-
-                turning = self.car_list[car_id].turning
-                time_in_inter = inter_length_data.getIntertime(lane, turning)
-
-                time_offset += time_in_inter  # time pass intersection
-
-                # Start from next intersection
-                if time_offset <= cfg.ROUTING_PERIOD:
-                    # Not allowing scheduling for a while
-                    return None
-                else:
-                    direction = lane//cfg.LANE_NUM_PER_DIRECTION
-                    if turning == "S":
-                        intersection_from_direction = (direction+2)%4
-                    elif turning == "L":
-                        intersection_from_direction = (direction-1)%4
-                    elif turning == "R":
-                        intersection_from_direction = (direction+1)%4
-
-                    intersection_id = self.ID
-
-            length = self.car_list[car_id].length
-
-            return (length, time_offset, intersection_id, int(intersection_from_direction))
-
-        elif self.ID in lane_id:
-            return None
-
-
-        else:
-            return None
+        return intersection_id
 
     def run(self, simu_step):
 
@@ -294,7 +210,7 @@ class IntersectionManager:
 
                 car.zone = "Intersection"
 
-                if car.D+car.OT <= -0.4 or car.D+car.OT >= 0.4:
+                if car.D+car.OT <= -1 or car.D+car.OT >= 1:
                     print("DEBUG: Car didn't arrive at the intersection at right time.")
 
                     print("ID", car.ID)
@@ -355,7 +271,7 @@ class IntersectionManager:
 
                 others_road_info = copy.deepcopy(self.others_road_info)
 
-                self.scheduling_thread = threading.Thread(target = Scheduling, args = (self.lane_advisor, sched_car, n_sched_car, advised_n_sched_car, self.cc_list, self.car_list, self.schedule_period_count, others_road_info, self.spillback_delay_record))
+                self.scheduling_thread = threading.Thread(target = Scheduling, args = (None, sched_car, n_sched_car, advised_n_sched_car, self.cc_list, self.car_list, self.schedule_period_count, others_road_info, self.spillback_delay_record))
                 self.scheduling_thread.start()
 
 
@@ -406,17 +322,17 @@ class IntersectionManager:
 
                 lane_sub_idx = (cfg.LANE_NUM_PER_DIRECTION-lane%cfg.LANE_NUM_PER_DIRECTION-1)
 
-                TODO: set out lane based on the path
+                # TODO: set out lane based on the path
                 '''
                 out_sub_lane = (cfg.LANE_NUM_PER_DIRECTION-lane%cfg.LANE_NUM_PER_DIRECTION-1)
 
-                if car.ID[1] == 'R':
+                if car.next_turn == 'R':
                     out_sub_lane = 0
-                elif car.ID[1] == 'L':
+                elif car.next_turn == 'L':
                     out_sub_lane = cfg.LANE_NUM_PER_DIRECTION-1
 
                 car.dst_lane = int(car.out_dir*cfg.LANE_NUM_PER_DIRECTION + out_sub_lane)
-                '''
+                #'''
 
                 # Stay on its lane
                 traci.vehicle.changeLane(car_id, lane_sub_idx, 1.0)
@@ -467,12 +383,12 @@ class IntersectionManager:
 
 
                 #advised_lane = self.lane_advisor.adviseLaneShortestTrajectory(car)
-                advised_lane = self.lane_advisor.adviseLane(self.car_list[car_id], spillback_lane_advise_avoid)
+                #advised_lane = self.lane_advisor.adviseLane(self.car_list[car_id], spillback_lane_advise_avoid)
                 #advised_lane = self.lane_advisor.adviseLane_v2(self.car_list[car_id])
                 #advised_lane = random.randrange(0, cfg.LANE_NUM_PER_DIRECTION)
 
-                traci.vehicle.changeLane(car_id, advised_lane, time_in_AZ)
-                car.desired_lane = int((cfg.LANE_NUM_PER_DIRECTION-advised_lane-1)+(car.lane//cfg.LANE_NUM_PER_DIRECTION)*cfg.LANE_NUM_PER_DIRECTION)
+                #traci.vehicle.changeLane(car_id, advised_lane, time_in_AZ)
+                #car.desired_lane = int((cfg.LANE_NUM_PER_DIRECTION-advised_lane-1)+(car.lane//cfg.LANE_NUM_PER_DIRECTION)*cfg.LANE_NUM_PER_DIRECTION)
                 #self.car_list[car_id].desired_lane = car.lane
 
                 car.zone_state = "AZ_advised"
@@ -517,9 +433,10 @@ class IntersectionManager:
 # Scheduling thread that handles scheduling and update the table for lane advising
 def Scheduling(lane_advisor, sched_car, n_sched_car, advised_n_sched_car, cc_list, car_list, schedule_period_count, others_road_info, spillback_delay_record):
 
-    IcaccPlus(sched_car, n_sched_car, advised_n_sched_car, others_road_info, spillback_delay_record)
+    #IcaccPlus(sched_car, n_sched_car, advised_n_sched_car, others_road_info, spillback_delay_record)
+    Fcfs(sched_car, n_sched_car, advised_n_sched_car, others_road_info, spillback_delay_record)
 
-    lane_advisor.updateTableFromCars(n_sched_car, advised_n_sched_car)
+    #lane_advisor.updateTableFromCars(n_sched_car, advised_n_sched_car)
 
     for car in n_sched_car:
         car.zone_state = "scheduled"

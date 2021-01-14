@@ -32,6 +32,15 @@ class Car:
         self.length = length
         self.turning = turning
 
+        self.in_dir = lane // cfg.LANE_NUM_PER_DIRECTION
+        self.out_dir = None
+        if turning == 'S':
+            self.out_dir = (self.in_dir+2)%4
+        elif turning == 'R':
+            self.out_dir = (self.in_dir+1)%4
+        elif turning == 'L':
+            self.out_dir = (self.in_dir-1)%4
+
         # Determine the speed in the intersection
         speed_in_intersection = cfg.TURN_SPEED
         if turning == "S":
@@ -48,6 +57,15 @@ class Car:
         self.original_lane = lane   # The lane when the car joined the system
         self.lane = lane
         self.desired_lane = lane
+        self.is_spillback = False
+
+        out_sub_lane = (cfg.LANE_NUM_PER_DIRECTION-lane%cfg.LANE_NUM_PER_DIRECTION-1)
+        if turning == 'R':
+            out_sub_lane = 0
+        elif turning == 'L':
+            out_sub_lane = cfg.LANE_NUM_PER_DIRECTION-1
+        self.dst_lane = int(self.out_dir*cfg.LANE_NUM_PER_DIRECTION + out_sub_lane)
+
 
         # Position: how far between it and the intersection (0 at the entry of intersection)
         self.position = cfg.AZ_LEN + cfg.PZ_LEN + cfg.GZ_LEN+ cfg.BZ_LEN + cfg.CCZ_LEN
@@ -198,7 +216,7 @@ class Car:
                 target_speed = min(cfg.MAX_SPEED, my_speed + cfg.MAX_ACC*cfg.TIME_STEP)
                 traci.vehicle.setSpeed(self.ID, target_speed)
                 if target_speed == cfg.MAX_SPEED:
-                    self.CC_state = "Max_speed"
+                    self.CC_state = "Keep_Max_speed"
             else:
                 my_speed = traci.vehicle.getSpeed(self.ID)
                 min_catch_up_time = (my_speed-front_speed)/cfg.MAX_ACC
@@ -224,9 +242,15 @@ class Car:
                 target_speed = min(cfg.MAX_SPEED, my_speed + cfg.MAX_ACC*cfg.TIME_STEP)
                 traci.vehicle.setSpeed(self.ID, target_speed)
                 if target_speed == cfg.MAX_SPEED:
-                    self.CC_state = "Max_speed"
+                    self.CC_state = "Keep_Max_speed"
             else:
-                traci.vehicle.setSpeed(self.ID, front_speed)
+                if front_distance > cfg.HEADWAY:
+                    my_speed = traci.vehicle.getSpeed(self.ID)
+                    target_speed = min(cfg.MAX_SPEED, my_speed + cfg.MAX_ACC*cfg.TIME_STEP)
+                    traci.vehicle.setSpeed(self.ID, target_speed)
+                    self.CC_state = "Platoon_catchup"
+                else:
+                    traci.vehicle.setSpeed(self.ID, front_speed)
 
         elif (self.CC_state == "Preseting_ready"):
             my_speed = traci.vehicle.getSpeed(self.ID)
@@ -244,11 +268,12 @@ class Car:
         elif (self.CC_state == "CruiseControl_ready"):
             reply = self.CC_get_shifts(car_list)
             self.CC_get_slow_down_speed()
-            if self.CC_is_stop_n_go == True:
+            self.CC_state = "Keep_Max_speed"
+            #if self.CC_is_stop_n_go == True:
                 # Only stop at very closed to the intersection
-                self.CC_state = None
-            else:
-                self.CC_state = "CruiseControl_shift_start"
+                #self.CC_state = None
+            #else:
+                #self.CC_state = "CruiseControl_shift_start"
 
         elif (self.CC_state == "CruiseControl_shift_start") and self.position < (cfg.CCZ_LEN-self.CC_shift):
             self.CC_state = "CruiseControl_decelerate"

@@ -16,89 +16,14 @@ import json
 # Route id = sink id in MiniVnet
 
 
-def generate_routefile(arrival_rate):
-    # demand per second from different directions
-    #dir_prob = [0.3, 0.3, 0.3, 0.3]
-    #dir_prob = [0.8, 0.8, 0.8, 0.8]
-    dir_prob = [arrival_rate]*4
-
-    # Turning probability (L, S, R)
-    #turn_prob =[1./32, 1./32, 15./16]
-    turn_prob =[1./3, 1./3, 1./3]
-
-
-    with open("data/icacc+.rou.xml", "w") as routes:
-        print("<routes>\n", file=routes)
-
-        for i in range(5,10):
-            vType_str = '\t<vType id="car%i" accel="100.0" decel="100.0" sigma="0.0" length="%i" minGap="%f" maxSpeed="%f" tau="%f" carFollowModel="CACC" color="255,255,255"/>' % (i, i, cfg.HEADWAY, cfg.MAX_SPEED, cfg.TIME_STEP);
-
-            print(vType_str, file=routes)
-
-        route_list = []
-
-        route_str = "\n"
-        for x_idx in range(1, cfg.INTER_SIZE+1):
-
-            y_idx = 1
-            route_id = 0*cfg.INTER_SIZE + (x_idx-1)
-            src_lane = "00%i"%(y_idx) + "_" + "00%i"%(x_idx) + "_1"
-            route_str += "\t<route id=\""
-            route_str += str(route_id)
-            route_str += "\" edges=\""
-            route_str += " " + str(src_lane)
-            route_str += "\"/>\n"
-            route_list.append(str(route_id))
-
-            y_idx = cfg.INTER_SIZE
-            route_id = 1*cfg.INTER_SIZE + (x_idx-1)
-            src_lane = "00%i"%(x_idx) + "_" + "00%i"%(y_idx) + "_2"
-            route_str += "\t<route id=\""
-            route_str += str(route_id)
-            route_str += "\" edges=\""
-            route_str += " " + str(src_lane)
-            route_str += "\"/>\n"
-            route_list.append(str(route_id))
-
-
-            y_idx = cfg.INTER_SIZE
-            route_id = 2*cfg.INTER_SIZE + (cfg.INTER_SIZE - x_idx)
-            src_lane = "00%i"%(y_idx) + "_" + "00%i"%(x_idx) + "_3"
-            route_str += "\t<route id=\""
-            route_str += str(route_id)
-            route_str += "\" edges=\""
-            route_str += " " + str(src_lane)
-            route_str += "\"/>\n"
-            route_list.append(str(route_id))
-
-            y_idx = 1
-            route_id = 3*cfg.INTER_SIZE + (cfg.INTER_SIZE - x_idx)
-            src_lane = "00%i"%(x_idx) + "_" + "00%i"%(y_idx) + "_4"
-            route_str += "\t<route id=\""
-            route_str += str(route_id)
-            route_str += "\" edges=\""
-            route_str += " " + str(src_lane)
-            route_str += "\"/>\n"
-            route_list.append(str(route_id))
-
-        print(route_str, file=routes)
-
-
-        vehNr = 0
-        for i in range(cfg.N_TIME_STEP):
-            for route in route_list:
-                if random.uniform(0, 1) < arrival_rate:
-                    car_length = random.randrange(5,10)
-                    veh_str = "\t<vehicle id=\"car"
-                    lane_r = random.randrange(cfg.LANE_NUM_PER_DIRECTION)
-
-                    veh_str += '_%i" type="car%i" route="%s" depart="%i" departLane = "%i" departSpeed="%f"/>' % (vehNr, car_length, route, i, lane_r, cfg.MAX_SPEED);
-                    print(veh_str, file=routes)
-
-                    vehNr += 1
-
-
-        print("</routes>", file=routes)
+''' ###############################
+#Notation
+        2
+        |
+    1 --i-- 3   1 --i-- 3 ...
+        |
+        4
+############################### '''
 
 
 def generate_routefile_with_src_dst(inter_size, arrival_rate, rand_seed, time_steps):
@@ -117,195 +42,136 @@ def generate_routefile_with_src_dst(inter_size, arrival_rate, rand_seed, time_st
 
     route_list = []
 
-    car_src_dst_dict = dict()   # {car_id: (src, dst)}
+    car_dict = dict()
 
     route_str = "\n"
+    rout_to_car_coordination = dict()
     for x_idx in range(1, inter_size+1):
 
         y_idx = 1
         route_id = 0*inter_size + (x_idx-1)
-        src_lane = "00%i"%(y_idx) + "_" + "00%i"%(x_idx) + "_1"
+        src_lane = "%3.3o"%(y_idx) + "_" + "%3.3o"%(x_idx) + "_1"
         route_str += "\t<route id=\""
         route_str += str(route_id)
         route_str += "\" edges=\""
         route_str += " " + str(src_lane)
         route_str += "\"/>\n"
         route_list.append(str(route_id))
-
+        rout_to_car_coordination[route_id] = (y_idx-1, x_idx)
 
         y_idx = inter_size
         route_id = 1*inter_size + (x_idx-1)
-
-        src_lane = "00%i"%(x_idx) + "_" + "00%i"%(y_idx) + "_2"
+        src_lane = "%3.3o"%(x_idx) + "_" + "%3.3o"%(y_idx) + "_2"
         route_str += "\t<route id=\""
         route_str += str(route_id)
         route_str += "\" edges=\""
         route_str += " " + str(src_lane)
         route_str += "\"/>\n"
         route_list.append(str(route_id))
+        rout_to_car_coordination[route_id] = (x_idx, y_idx+1)
 
 
         y_idx = inter_size
         route_id = 2*inter_size + (inter_size - x_idx)
-        src_lane = "00%i"%(y_idx) + "_" + "00%i"%(x_idx) + "_3"
+        src_lane = "%3.3o"%(y_idx) + "_" + "%3.3o"%(x_idx) + "_3"
         route_str += "\t<route id=\""
         route_str += str(route_id)
         route_str += "\" edges=\""
         route_str += " " + str(src_lane)
         route_str += "\"/>\n"
         route_list.append(str(route_id))
+        rout_to_car_coordination[route_id] = (y_idx+1, x_idx)
 
         y_idx = 1
         route_id = 3*inter_size + (inter_size - x_idx)
-        src_lane = "00%i"%(x_idx) + "_" + "00%i"%(y_idx) + "_4"
+        src_lane = "%3.3o"%(x_idx) + "_" + "%3.3o"%(y_idx) + "_4"
         route_str += "\t<route id=\""
         route_str += str(route_id)
         route_str += "\" edges=\""
         route_str += " " + str(src_lane)
         route_str += "\"/>\n"
         route_list.append(str(route_id))
+        rout_to_car_coordination[route_id] = (x_idx, y_idx-1)
 
     print(route_str, file=routes)
 
 
-    dir_prob = numpy.random.uniform(0, arrival_rate*1.5, len(route_list)).tolist()
-    #print(dir_prob)
-    #dir_prob = [arrival_rate]*len(route_list)
-
     vehNr = 0
-    for i in range(time_steps):
-        for idx_route in range(len(route_list)):
-            route = route_list[idx_route]
-            if random.uniform(0, 1) < dir_prob[idx_route]:
-                car_length = random.randrange(5,10)
-                veh_str = "\t<vehicle id=\"car"
-                lane_r = random.randrange(cfg.LANE_NUM_PER_DIRECTION)
+    # For every source node, generate CAVs with some distribution
+    for route in route_list:
+        # Exponential distribution for arrival headway (Poisson process)
+        time_step = random.expovariate(arrival_rate)
+        while time_step <= time_steps:
+            # Generate one CAV
+            car_length = random.randrange(5,10) # Car length
+            #lane_r = random.randrange(cfg.LANE_NUM_PER_DIRECTION)
+            lane_r = 0    # Currently, only one lane
 
-                veh_str += '_%i" type="car%i" route="%s" depart="%i" departLane = "%i" departSpeed="%f"/>' % (vehNr, car_length, route, i, lane_r, cfg.MAX_SPEED);
+            src_node_idx = int(route)   # Source node index
+            car_facing_direction = int(src_node_idx//inter_size)
+            # 0: E,  1: S,  2: W,  3: N
 
+            init_x, init_y = rout_to_car_coordination[int(route)] #Initial position (x, y)
+            car_coord_position = [init_x, init_y]
 
-                src_node_idx = int(route)
-                # Genterate destination
-                dst_node_idx = src_node_idx
-                while (src_node_idx-dst_node_idx)%(cfg.INTER_SIZE*4) < cfg.INTER_SIZE-1 or (dst_node_idx-src_node_idx)%(cfg.INTER_SIZE*4) < cfg.INTER_SIZE-1:
-                    dst_node_idx = random.randrange(0,cfg.INTER_SIZE*4)
+            # Generate routes
+            car_route_str = ""
+            while True:
+                # Move the car
+                if car_facing_direction == 0:   # Move east: x+1
+                    car_coord_position[0] += 1
+                elif car_facing_direction == 1:    # Move south: y-1
+                    car_coord_position[1] -= 1
+                elif car_facing_direction == 2:   # Move west: x-1
+                    car_coord_position[0] -= 1
+                elif car_facing_direction == 3:    # Move north: y+1
+                    car_coord_position[1] += 1
 
-                #while src_node_idx == dst_node_idx:
-                #    dst_node_idx = random.randrange(0,cfg.INTER_SIZE*4)
+                # Check if the car reach the edge
+                if car_coord_position[0] == 0:  # Reach x edge
+                    break
+                elif car_coord_position[0] == inter_size+1:  # Reach x edge
+                    break
+                elif car_coord_position[1] == 0:  # Reach y edge
+                    break
+                elif car_coord_position[1] == inter_size+1:  # Reach y edge
+                    break
 
-                car_src_dst_dict["car_"+str(vehNr)] = (src_node_idx, dst_node_idx)
+                # Choose the turning
+                turning = random.choice(["R", "S", "L"])
+                car_route_str += turning
+                # Change the facing direction
+                if turning == "R":
+                    car_facing_direction = (car_facing_direction+1) % 4
+                elif turning == "L":
+                    car_facing_direction = (car_facing_direction-1) % 4
 
-                print(veh_str, file=routes)
+                # Restart if the route is too long
+                if len(car_route_str) > 2*inter_size-1:
+                    # Reset the status
+                    car_facing_direction = int(int(route)//inter_size)
+                    init_x, init_y = rout_to_car_coordination[int(route)] #Initial position (x, y)
+                    car_coord_position = [init_x, init_y]
+                    car_route_str = ""
+                    continue
 
-                vehNr += 1
+            car_dict[(time_step, vehNr)] = ("car_"+str(vehNr)+"_"+car_route_str,
+                                            car_length, route, time_step, lane_r,
+                                            cfg.MAX_SPEED)
+            vehNr += 1
 
+            time_step += random.expovariate(arrival_rate)
+
+    sorted_car_list = sorted(car_dict.items(), key=lambda x: x[0][0])
+
+    for key, car in sorted_car_list:
+        # Build CAV profile for SUMO
+        veh_str = "\t<vehicle id=\""
+        veh_str += '%s" type="car%i" ' % (car[0], car[1])
+        veh_str += 'route="%s" depart="%i" ' % (car[2], car[3])
+        veh_str += 'departLane = "%i" departSpeed="%f"/>' % (car[4], car[5])
+        print(veh_str, file=routes)
 
     print("</routes>", file=routes)
 
-    json.dump(car_src_dst_dict, src_dst)
-
-def generate_routefile_with_src_dst_2(inter_size, arrival_rate, rand_seed, time_steps):
-
-    path = "data/routes/"
-    file_name = str(inter_size) + "_" + str(arrival_rate) + "_" + str(rand_seed)
-    routes = open(path + file_name + ".rou.xml", "w")
-    src_dst = open(path + file_name + "_src_dst" + ".json", "w")
-
-    print("<routes>\n", file=routes)
-
-    for i in range(5,10):
-        vType_str = '\t<vType id="car%i" accel="100.0" decel="100.0" sigma="0.0" length="%i" minGap="%f" maxSpeed="%f" tau="%f" carFollowModel="CACC" color="255,255,255"/>' % (i, i, cfg.HEADWAY, cfg.MAX_SPEED, cfg.TIME_STEP);
-
-        print(vType_str, file=routes)
-
-    route_list = []
-
-    car_src_dst_dict = dict()   # {car_id: (src, dst)}
-
-    route_str = "\n"
-    for x_idx in range(1, inter_size+1):
-
-        y_idx = 1
-        route_id = 0*inter_size + (x_idx-1)
-        src_lane = "00%i"%(y_idx) + "_" + "00%i"%(x_idx) + "_1"
-        route_str += "\t<route id=\""
-        route_str += str(route_id)
-        route_str += "\" edges=\""
-        route_str += " " + str(src_lane)
-        route_str += "\"/>\n"
-        route_list.append(str(route_id))
-
-
-        y_idx = inter_size
-        route_id = 1*inter_size + (x_idx-1)
-
-        src_lane = "00%i"%(x_idx) + "_" + "00%i"%(y_idx) + "_2"
-        route_str += "\t<route id=\""
-        route_str += str(route_id)
-        route_str += "\" edges=\""
-        route_str += " " + str(src_lane)
-        route_str += "\"/>\n"
-        route_list.append(str(route_id))
-
-
-        y_idx = inter_size
-        route_id = 2*inter_size + (inter_size - x_idx)
-        src_lane = "00%i"%(y_idx) + "_" + "00%i"%(x_idx) + "_3"
-        route_str += "\t<route id=\""
-        route_str += str(route_id)
-        route_str += "\" edges=\""
-        route_str += " " + str(src_lane)
-        route_str += "\"/>\n"
-        route_list.append(str(route_id))
-
-        y_idx = 1
-        route_id = 3*inter_size + (inter_size - x_idx)
-        src_lane = "00%i"%(x_idx) + "_" + "00%i"%(y_idx) + "_4"
-        route_str += "\t<route id=\""
-        route_str += str(route_id)
-        route_str += "\" edges=\""
-        route_str += " " + str(src_lane)
-        route_str += "\"/>\n"
-        route_list.append(str(route_id))
-
-    print(route_str, file=routes)
-
-
-    #dir_prob = numpy.random.uniform(0, arrival_rate*1.5, len(route_list)).tolist()
-    #print(dir_prob)
-    dir_prob = [0]*len(route_list)
-    dir_prob[0] = arrival_rate
-
-    dir_prob[-2] = arrival_rate
-
-    vehNr = 0
-    for i in range(time_steps):
-        for idx_route in range(len(route_list)):
-            route = route_list[idx_route]
-            if random.uniform(0, 1) < dir_prob[idx_route]:
-                car_length = random.randrange(5,10)
-                veh_str = "\t<vehicle id=\"car"
-                lane_r = random.randrange(cfg.LANE_NUM_PER_DIRECTION)
-
-                veh_str += '_%i" type="car%i" route="%s" depart="%i" departLane = "%i" departSpeed="%f"/>' % (vehNr, car_length, route, i, lane_r, cfg.MAX_SPEED);
-
-
-                src_node_idx = int(route)
-                # Genterate destination
-                dst_node_idx = src_node_idx
-                while (src_node_idx-dst_node_idx)%(cfg.INTER_SIZE*4) < cfg.INTER_SIZE*2-1 or (dst_node_idx-src_node_idx)%(cfg.INTER_SIZE*4) < cfg.INTER_SIZE*2-1:
-                    dst_node_idx = random.randrange(0,cfg.INTER_SIZE*4)
-
-                #while src_node_idx == dst_node_idx:
-                #    dst_node_idx = random.randrange(0,cfg.INTER_SIZE*4)
-
-                car_src_dst_dict["car_"+str(vehNr)] = (src_node_idx, dst_node_idx)
-
-                print(veh_str, file=routes)
-
-                vehNr += 1
-
-
-    print("</routes>", file=routes)
-
-    json.dump(car_src_dst_dict, src_dst)
+    json.dump(sorted_car_list, src_dst)
