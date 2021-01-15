@@ -5,8 +5,6 @@ from random import randrange
 import json
 import math
 import numpy
-#import myGraphic
-
 RESOLUTION = 2  # According to gen_advise.cpp
 
 class LaneAdviser:
@@ -56,7 +54,7 @@ class LaneAdviser:
         #'''
 
         # Case 3: (case 1 + considering the halt) update with the latest car
-        '''
+        #'''
         latest_delay_list = dict()
         cars_on_lanes = dict()
         for idx in range(4*cfg.LANE_NUM_PER_DIRECTION):
@@ -78,26 +76,6 @@ class LaneAdviser:
                 self.updateTable(car.lane, car.turning, car.position/cfg.MAX_SPEED, self.timeMatrix)
         #'''
 
-        # Case 4: (case 1 + considering the halt) update with the latest car  "Using desired_lane!!!!!!!""
-        for car in advised_n_sched_car:
-            latest_delay_list = dict()
-            cars_on_lanes = dict()
-            for idx in range(4*cfg.LANE_NUM_PER_DIRECTION):
-                cars_on_lanes[idx] = []
-            for car in n_sched_car:
-                cars_on_lanes[car.desired_lane].append(car)
-            for idx in range(4*cfg.LANE_NUM_PER_DIRECTION):
-                sorted_car_list = sorted(cars_on_lanes[idx], key=lambda car: car.position, reverse=True)
-                if len(sorted_car_list) > 0:
-                    latest_delay_list[idx] = sorted_car_list[0].D
-                else:
-                    latest_delay_list[idx] = 0
-
-            if (car.CC_state != None) and  ("Platoon" in car.CC_state):
-                self.updateTable(car.lane, car.turning, car.position/cfg.MAX_SPEED+latest_delay_list[idx], self.timeMatrix)
-            else:
-                self.updateTable(car.lane, car.turning, car.position/cfg.MAX_SPEED, self.timeMatrix)
-
 
         # Count car number on each lane of advised but not scheduled
         for lane_id in range(4*cfg.LANE_NUM_PER_DIRECTION):
@@ -107,14 +85,13 @@ class LaneAdviser:
         for car in advised_n_sched_car:
             self.count_lane_A_N_S_car_num[(car.lane, car.turning)] += 1
 
-        #myGraphic.gui.setTimeMatrix(self.timeMatrix)
+        myGraphic.gui.setTimeMatrix(self.timeMatrix)
     # Give lane advice to Cars
     def adviseLane(self, car):
         advise_lane = None
 
         # Sort out the LOTs and list the candidates
         start_lane = (car.lane//cfg.LANE_NUM_PER_DIRECTION)*cfg.LANE_NUM_PER_DIRECTION
-
         occup_time_list = [self.getMaxTime(start_lane+idx, car.turning, self.timeMatrix) for idx in range(cfg.LANE_NUM_PER_DIRECTION)]
         candidate_list = numpy.argsort(occup_time_list)
 
@@ -184,8 +161,93 @@ class LaneAdviser:
         self.advised_lane[(car.lane//cfg.LANE_NUM_PER_DIRECTION, car.turning)] = advise_lane
         # Change the exact index to the lane index of one direction
         advise_lane = advise_lane%cfg.LANE_NUM_PER_DIRECTION
-        #myGraphic.gui.setTimeMatrix(self.timeMatrix)
-        #myGraphic.gui.setAdviseMatrix(self.advised_lane)
+        myGraphic.gui.setTimeMatrix(self.timeMatrix)
+        myGraphic.gui.setAdviseMatrix(self.advised_lane)
+
+        return cfg.LANE_NUM_PER_DIRECTION-advise_lane-1 # The index of SUMO is reversed
+
+
+    # Give lane advice to Cars
+    def adviseLane_v2(self, car):
+        advise_lane = None
+
+        # Sort out the LOTs and list the candidates
+        start_lane = (car.lane//cfg.LANE_NUM_PER_DIRECTION)*cfg.LANE_NUM_PER_DIRECTION
+        occup_time_list = [self.getMaxTime(start_lane+idx, car.turning, self.timeMatrix) for idx in range(cfg.LANE_NUM_PER_DIRECTION)]
+        candidate_list = numpy.argsort(occup_time_list)
+
+        # Get the shortest or the most ideal lane
+        ideal_lane = None
+        if car.turning == 'R':
+            ideal_lane = start_lane+cfg.LANE_NUM_PER_DIRECTION-1
+        elif car.turning == 'L':
+            ideal_lane = start_lane
+        else:
+            # find one mid-lane with smallest LOTs
+            if cfg.LANE_NUM_PER_DIRECTION > 2:
+                ideal_lane = start_lane+candidate_list[0]
+            else:
+                for lane_idx in candidate_list:
+                    if lane_idx != 0 and lane_idx != cfg.LANE_NUM_PER_DIRECTION:
+                        ideal_lane = start_lane+lane_idx
+                        break
+        advise_lane = ideal_lane
+
+        # Scan through the candidates and see if we want to change our candidates
+        # Get the cost of the ideal trajectory
+        ideal_timeMatrix = self.copyMatrix()
+        self.updateTableAfterAdvise(ideal_lane, car.turning, car.length, ideal_timeMatrix)
+        ideal_others_LOT_list = dict()
+        for lane_i in range(cfg.LANE_NUM_PER_DIRECTION*4):
+            for turning_i in ['S', 'R', 'L']:
+                ideal_others_LOT_list[(lane_i, turning_i)] = self.getMaxTime(lane_i, turning_i, ideal_timeMatrix)
+
+
+        for lane_idx in candidate_list:
+            candidate_lane = start_lane+lane_idx
+
+            # The ideal lane has the smallest cost so far
+            if start_lane+lane_idx == ideal_lane:
+                break
+
+            # see if the trajectory affects others
+            candidate_timeMatrix = self.copyMatrix()
+            self.updateTableAfterAdvise(candidate_lane, car.turning, car.length, candidate_timeMatrix)
+            candidate_others_LOT_list = dict()
+            for lane_i in range(cfg.LANE_NUM_PER_DIRECTION*4):
+                for turning_i in ['S', 'R', 'L']:
+                    candidate_others_LOT_list[(lane_i, turning_i)] = self.getMaxTime(lane_i, turning_i, candidate_timeMatrix)
+
+            # Compare the LOTs
+            is_better = True
+            for lane_i in range(cfg.LANE_NUM_PER_DIRECTION*4):
+                for turning_i in ['S', 'R', 'L']:
+                    if lane_i == int(candidate_lane):
+                        continue
+                    elif self.count_lane_A_N_S_car_num[(lane_i, turning_i)] > 0:
+                        if candidate_others_LOT_list[(lane_i, turning_i)] > ideal_others_LOT_list[(lane_i, turning_i)]:
+                            is_better = False
+                            break
+
+            if not is_better:
+                continue
+            else:
+                advise_lane = candidate_lane
+                break
+
+        # The lane is chosen, update the matrix update giving the lane advice
+        self.updateTableAfterAdvise(advise_lane, car.turning, car.length, self.timeMatrix)
+
+        # Record the given lane
+        self.advised_lane[(car.lane//cfg.LANE_NUM_PER_DIRECTION, car.turning)] = advise_lane
+
+        if (advise_lane//cfg.LANE_NUM_PER_DIRECTION!= car.lane//cfg.LANE_NUM_PER_DIRECTION):
+            print(car.ID, advise_lane, car.lane)
+        assert(advise_lane//cfg.LANE_NUM_PER_DIRECTION== car.lane//cfg.LANE_NUM_PER_DIRECTION)
+        # Change the exact index to the lane index of one direction
+        advise_lane = advise_lane%cfg.LANE_NUM_PER_DIRECTION
+        myGraphic.gui.setTimeMatrix(self.timeMatrix)
+        myGraphic.gui.setAdviseMatrix(self.advised_lane)
 
         return cfg.LANE_NUM_PER_DIRECTION-advise_lane-1 # The index of SUMO is reversed
 
@@ -217,8 +279,8 @@ class LaneAdviser:
         advise_lane = ideal_lane# Change the exact index to the lane index of one direction
         advise_lane = advise_lane%cfg.LANE_NUM_PER_DIRECTION
 
-        #myGraphic.gui.setTimeMatrix([[0]* self.num_di for i in range(self.num_di)])
-        #myGraphic.gui.setAdviseMatrix(self.advised_lane)
+        myGraphic.gui.setTimeMatrix([[0]* self.num_di for i in range(self.num_di)])
+        myGraphic.gui.setAdviseMatrix(self.advised_lane)
 
         return cfg.LANE_NUM_PER_DIRECTION-advise_lane-1 # The index of SUMO is reversed
 

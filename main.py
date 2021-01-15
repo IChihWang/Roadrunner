@@ -5,6 +5,7 @@ from __future__ import print_function
 import os
 import sys
 
+#sys.path.append('/usr/share/sumo/tools/')
 sys.path.append('/usr/share/sumo/tools/')
 # we need to import python modules from the $SUMO_HOME/tools directory
 if 'SUMO_HOME' in os.environ:
@@ -27,118 +28,184 @@ import traci
 import traceback
 
 import config as cfg
-
+from milp import Icacc, IcaccPlus, Fcfs, FixedSignal
 from gen_route import generate_routefile
+import csv
 
 
-# For debug
-#from playsound import playsound
-
-from IntersectionManager import IntersectionManager
-#from myGraphic import Gui
-#import myGraphic
 
 
-#myGraphic.gui = Gui()
+from Cars import Car
+
+
+
+in_lanes = []
+out_lanes = []
+
+CCZ_detecter = []
+BZ_detecter = []
+GZ_detecter = []
+PZ_detecter = []
+AZ_detecter = []
+
 
 ###################
+
 
 
 def run():
     """execute the TraCI control loop"""
     simu_step = 0
 
-    # Create a list with intersection managers
-    intersection_manager_list = []
-    for idx in range(1, cfg.INTER_SIZE+1):
-        for jdx in range(1, cfg.INTER_SIZE+1):
-            intersection_manager_id = "%3.3o"%(idx) + "_" + "%3.3o"%(jdx)
-            intersection_manager = IntersectionManager(intersection_manager_id)
-            intersection_manager_list.append(intersection_manager)
+    update_count = 0    # Counter to see how often we should trigger the scheduling
+    scheduling_thread = None
 
+    car_list = dict()   # Cars that needs to be handled
+    cc_list = dict()    # Cars under Cruse Control in CCZ
+    leaving_cars = dict()   # Cars just entered the intersection (leave the CC zone)
+    az_list = dict()
 
+    # Statistics
+    total_delays = 0
+    total_delays_by_sche = 0
+    car_num = 0
+    total_fuel_consumption = 0
+
+    # For front car
+    CC_last_cars_on_lanes = dict()
+    for idx in range(4*cfg.LANE_NUM_PER_DIRECTION):
+        CC_last_cars_on_lanes[idx] = None
 
     try:
         while traci.simulation.getMinExpectedNumber() > 0:
-
-            if (simu_step*10)//1/10.0 == 600:
+            if (simu_step*10)//1/10.0 == cfg.N_TIME_STEP:
                 break
+            # if (simu_step*10)//1/10.0 == 1000:
+                #debug_t = threading.Thread(target=debug_ring)
+                #debug_t.start()
+                # wait = raw_input("PRESS ENTER TO CONTINUE.")
 
 
             traci.simulationStep()
             all_c = traci.vehicle.getIDList()
+
+            # Update the time OT
+            for car_key in car_list:
+                # Update when the car is scheduled
+                if car_list[car_key].OT != None:
+                    car_list[car_key].OT -= cfg.TIME_STEP
+
+
             # Update the position of each car
             for car_id in all_c:
                 lane_id = traci.vehicle.getLaneID(car_id)
+                total_fuel_consumption += traci.vehicle.getFuelConsumption(car_id)*cfg.TIME_STEP
 
-                for intersection_manager in intersection_manager_list:
-                    if intersection_manager.check_in_my_region(lane_id):
-                        intersection_manager.update_car(car_id, lane_id, simu_step)
-                        break
+                # Only checking at the cars in in-coming lanes (Name in SUMO simulator)
+                if lane_id in in_lanes:
+
+                    # Add car if the car is not in the list yet
+                    if car_id not in car_list:
+                        # Gather the information of the new car
+                        #traci.vehicle.setSpeed(car_id, cfg.MAX_SPEED)
+                        length = traci.vehicle.getLength(car_id)
+                        lane = ((4-int(lane_id[0]))*cfg.LANE_NUM_PER_DIRECTION) + (cfg.LANE_NUM_PER_DIRECTION-int(lane_id[2])-1)
+                        turning = car_id[0]
+
+                        new_car = Car(car_id, length, lane, turning)
+                        new_car.Enter_T = simu_step - (traci.vehicle.getLanePosition(car_id))/cfg.MAX_SPEED
+                        car_list[car_id] = new_car
 
 
-            for intersection_manager in intersection_manager_list:
-                intersection_manager.run(simu_step)
+                    # Set the position of each cars
+                    position = cfg.AZ_LEN + cfg.PZ_LEN + cfg.GZ_LEN+ cfg.BZ_LEN + cfg.CCZ_LEN - traci.vehicle.getLanePosition(car_id)
+                    car_list[car_id].setPosition(position)
+
+
+            # Entering the intersection (Record the cars)
+            for car_id, car in car_list.copy().items():
+                lane_id = traci.vehicle.getLaneID(car_id)
+                if lane_id not in in_lanes:
+
+                    leaving_cars[car_id] = car_list[car_id]
+                    car_list[car_id].Leave_T = simu_step
+                    total_delays += (car.Leave_T - car.Enter_T) - ((cfg.CCZ_LEN+cfg.GZ_LEN+cfg.BZ_LEN+cfg.PZ_LEN+cfg.AZ_LEN)/cfg.MAX_SPEED)# Measurement
+                    car_num += 1
+                    car_list.pop(car_id)
+
+            # Leaving the intersection (Reset the speed to V_max)
+            for car_id, car in leaving_cars.copy().items():
+                lane_id = traci.vehicle.getLaneID(car_id)
+                if lane_id in out_lanes:
+                    traci.vehicle.setSpeed(car_id, cfg.MAX_SPEED)
+                    del leaving_cars[car_id]
+
 
             simu_step += cfg.TIME_STEP
+
+
+
+            ################################################
+            # Change lane in AZ
+            for lane in AZ_detecter:
+                if traci.inductionloop.getLastStepVehicleNumber(lane) > 0:
+                    Veh = traci.inductionloop.getLastStepVehicleIDs(lane)
+                    car_id = Veh[0]
+                    az_list[car_id] = car_list[car_id]
+
+                    traci.vehicle.setSpeed(car_id, cfg.MAX_SPEED)
+
+                    traci.vehicle.setMinGap(car_id, 1)
+                    #traci.vehicle.setLaneChangeMode(car_id, 1557)
+
+
+
+
     except Exception as e:
         traceback.print_exc()
+    #JC
+    print("Average total delay: ", total_delays/car_num)
+    print("Number of car: ", car_num)
 
-
-    #debug_t = threading.Thread(target=debug_ring)
-    #debug_t.start()
-    print(sys.argv[1], int(sys.argv[2]), int(sys.argv[3]))
-
-    # Print out the measurements
-    #print("Average total delay: ", total_delays/car_num)
-    #print("Average delay by scheduling: ", total_delays_by_sche/car_num)
-    print(intersection_manager.total_delays/intersection_manager.car_num, intersection_manager.total_delays_by_sche/intersection_manager.car_num, intersection_manager.car_num)
-
-    print("avg_fuel = ",intersection_manager.total_fuel_consumption/intersection_manager.fuel_consumption_count)
-
-    sys.stdout.flush()
+    with open(file_name, 'a', newline='') as csvfile:
+        writer = csv.writer(csvfile, dialect='excel-tab', quoting=csv.QUOTE_MINIMAL, delimiter = ',')
+        to_write = [sys.argv[1], sys.argv[2], "_", car_num,
+                    total_delays/car_num,
+                    total_fuel_consumption/car_num]
+        writer.writerow(to_write)
 
     traci.close()
+    sys.stdout.flush()
+
+    return (simu_step*10)//1/10.0
 
 
 
-
-
-##########################
-# Setup running options for sumo
-def get_options():
-    optParser = optparse.OptionParser()
-    optParser.add_option("--nogui", action="store_true",
-                         default=False, help="run the commandline version of sumo")
-    options, args = optParser.parse_args()
-    return options
 
 
 ###########################
 # Main function
 if __name__ == "__main__":
-    print("Usage: python code.py <arrival_rate (0~1.0)> <seed> <schedular>")
 
     seed = int(sys.argv[2])
     random.seed(seed)  # make tests reproducible
     numpy.random.seed(seed)
 
-    options = get_options()
-
-    # this script has been called from the command line. It will start sumo as a server, then connect and run
-    if options.nogui:
-        sumoBinary = checkBinary('sumo')
-    else:
-        sumoBinary = checkBinary('sumo-gui')
+    sumoBinary = checkBinary('sumo')
 
     # 0. Generate the intersection information files
     os.system("bash gen_intersection/gen_data.sh " + str(cfg.LANE_NUM_PER_DIRECTION))
 
+    arrival_rate = sys.argv[1]
     # 1. Generate the route file for this simulation
-    arrival_rate = float(sys.argv[1])
-    generate_routefile(arrival_rate)
+    generate_routefile(str(arrival_rate))
 
-
+    # 2. Setup lane ID
+    for idx in range(1,5):
+        for jdx in range(cfg.LANE_NUM_PER_DIRECTION):
+            idx_str = str(idx)+'_'+str(jdx)
+            in_lanes.append(idx_str)
+            out_lanes.append('-'+idx_str)
 
 
 
@@ -149,6 +216,6 @@ if __name__ == "__main__":
                                  "--collision.mingap-factor", "0"])
 
         # 4. Start running SUMO
-        run()
+        testtime = run()
     except:
         None

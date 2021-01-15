@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+	<vType id="car5" accel="100.0" decel="100.0" sigma="0.0" length="5" minGap="1.0" maxSpeed="11.180000" carFollowModel="CACC" color="255,255,255"/>
+	<vType id="car6" accel="100.0" decel="100.0" sigma="0.0" length="6" minGap="1.0" maxSpeed="11.180000" carFollowModel="CACC" color="255,255,255"/>
+	<vType id="car7" accel="100.0" decel="100.0" sigma="0.0" length="7" minGap="1.0" maxSpeed="11.180000" carFollowModel="CACC" color="255,255,255"/>
+	<vType id="car8" accel="100.0" decel="100.0" sigma="0.0" length="8" minGap="1.0" maxSpeed="11.180000" carFollowModel="CACC" color="255,255,255"/>
+	<vType id="car9" accel="100.0" decel="100.0" sigma="0.0" length="9" minGap="1.0" maxSpeed="11.180000" carFollowModel="CACC" color="255,255,255"/>
+
+	<route id="route1_2" edges=" 1 -2"/>
+	<route id="route1_3" edges=" 1 -3"/>
+	<route id="route1_4" edges=" 1 -4"/>
+	<route id="route2_1" edges=" 2 -1"/>
+	<route id="route2_3" edges=" 2 -3"/>
+	<route id="route2_4" edges=" 2 -4"/>
+	<route id="route3_1" edges=" 3 -1"/>
+	<route id="route3_2" edges=" 3 -2"/>
+	<route id="route3_4" edges=" 3 -4"/>
+	<route id="route4_1" edges=" 4 -1"/>
+	<route id="route4_2" edges=" 4 -2"/>
+	<route id="route4_3" edges=" 4 -3"/>
+
+   
+    <flow id="a11"  begin="0" end= "1000" vehsPerHour='500' type="car5" departLane="random" departSpeed="max">
+     <route edges="route1_2"/>
+    </flow>
+
+    <flow id="a12"  begin="0" end= "1000" vehsPerHour='500' type="car5" departLane="random" departSpeed="max">
+     <route edges="route1_3"/>
+    </flow>
+
+    <flow id="a13"   begin="0" end= "1000" vehsPerHour='37' type="car5" departLane="random" departSpeed="max">
+     <route edges="route1_4"/>
+    </flow>
+
+    <flow id="b2"    begin="0" end= "1000" vehsPerHour='500' type="car5" departLane="random" departSpeed="max">
+     <route edges="route2_1"/>
+    </flow>
+
+    <flow id="c3"    begin="0" end= "1000" vehsPerHour='29' type="car5" departLane="random" departSpeed="max">
+     <route edges="route2_3"/>
+    </flow>
+
+    <flow id="d1"    begin="0" end= "1000" vehsPerHour='175' type="car5" departLane="random" departSpeed="max">
+     <route edges="route2_4"/>
+    </flow>
+
+    <flow id="e21"    begin="0" end= "1000" vehsPerHour='42' type="car5" departLane="random" departSpeed="max">
+     <route edges="route3_1"/>
+    </flow>
+
+    <flow id="e22"    begin="0" end= "1000" vehsPerHour='521' type="car5" departLane="random" departSpeed="max">
+     <route edges="route3_2"/>
+    </flow>
+
+    <flow id="e23"    begin="0" end= "1000" vehsPerHour='155' type="car5" departLane="random" departSpeed="max">
+     <route edges="route3_4"/>
+    </flow>
+
+    <flow id="f3"    begin="0" end= "1000" vehsPerHour='31' type="car5" departLane="random" departSpeed="max">
+     <route edges="route4_1"/>
+    </flow>
+
+    <flow id="g1"    begin="0" end= "1000" vehsPerHour='89' type="car5" departLane="random" departSpeed="max">
+     <route edges="route4_2"/>
+    </flow>
+
+    <flow id="h2"    begin="0" end= "1000" vehsPerHour='190' type="car5" departLane="random" departSpeed="max">
+     <route edges="route4_3"/>
+    </flow>
+
+
+</routes>

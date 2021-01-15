@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<!-- generated on 03/31/20 19:11:57 by Eclipse SUMO GUI Version 1.3.1
+<!-- generated on 01/15/21 21:22:28 by Eclipse SUMO sumo Version 1.8.0
 <configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
 
     <input>
-        <net-file value="data/NoGreenWaveLightlane2by2.net.xml"/>
+        <net-file value="data/lane3_tl1.net.xml"/>
         <route-files value="data/icacc+.rou.xml"/>
+        <additional-files value="data/icacc+.det.xml"/>
     </input>
 
     <output>
@@ -19,6 +20,8 @@
 
     <processing>
         <collision.mingap-factor value="0"/>
+        <time-to-teleport value="-1"/>
+        <lanechange.duration value="0.5"/>
     </processing>
 
     <report>
@@ -27,10 +30,11 @@
     </report>
 
     <traci_server>
-        <remote-port value="2137"/>
+        <remote-port value="10175"/>
     </traci_server>
 
     <gui_only>
+        <start value="true"/>
         <tracker-interval value="0.1"/>
     </gui_only>
 

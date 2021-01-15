@@ -14,15 +14,11 @@ def Icacc(old_cars, new_cars):
         new_cars[c_idx].OT = OT + cfg.SUMO_TIME_ERR
 
     # part 2: build the solver
-    solver = pywraplp.Solver('SolveIntegerProblem',pywraplp.Solver.CBC_MIXED_INTEGER_PROGRAMMING)
+    solver = pywraplp.Solver('SolveCarProblem',pywraplp.Solver.CBC_MIXED_INTEGER_PROGRAMMING)
 
     # part 3: claim parameters
     for c_idx in range(len(new_cars)):
-        if new_cars[c_idx].turning == 'S':
-            new_cars[c_idx].D = solver.NumVar(0, solver.infinity(), 'd'+str(c_idx))
-        else:
-            min_d = (2*cfg.CCZ_DEC2_LEN/(cfg.MAX_SPEED+cfg.TURN_SPEED)) - (cfg.CCZ_DEC2_LEN/cfg.MAX_SPEED)
-            new_cars[c_idx].D = solver.NumVar(min_d, solver.infinity(), 'd'+str(c_idx))
+        new_cars[c_idx].D = solver.NumVar(0, solver.infinity(), 'd'+str(c_idx))
 
 
     # part 4: set constrain (10)
@@ -31,50 +27,37 @@ def Icacc(old_cars, new_cars):
         for c_jdx in range(c_idx+1, len(all_cars)):
             if (all_cars[c_idx].lane == all_cars[c_jdx].lane):
 
-
                 if (type(all_cars[c_jdx].D)==float or type(all_cars[c_idx].D)==float):
                     if (type(all_cars[c_idx].D)!=float and type(all_cars[c_jdx].D)==float):
-                        bound = all_cars[c_jdx].length/all_cars[c_jdx].speed_in_intersection + (all_cars[c_jdx].OT+all_cars[c_jdx].D)
-                        bound += cfg.HEADWAY/all_cars[c_jdx].speed_in_intersection
-                        if all_cars[c_idx].turning == 'S' and all_cars[c_jdx].turning != 'S':
-                            bound += (cfg.MAX_SPEED-cfg.TURN_SPEED)*(cfg.CCZ_DEC2_LEN)/(cfg.MAX_SPEED*(cfg.MAX_SPEED+cfg.TURN_SPEED))
+                        bound = all_cars[c_jdx].length/cfg.MAX_SPEED + (all_cars[c_jdx].OT+all_cars[c_jdx].D)
+                        bound += cfg.HEADWAY/cfg.MAX_SPEED
                         bound = bound - all_cars[c_idx].OT
                         tmp_conts = solver.Constraint(bound,solver.infinity())
                         tmp_conts.SetCoefficient(all_cars[c_idx].D, 1)
                         #print("eq1-1 ", bound, all_cars[c_idx]['ID'], all_cars[c_jdx]['ID'])
                     elif (type(all_cars[c_idx].D)==float and type(all_cars[c_jdx].D)!=float):
-                        bound = all_cars[c_idx].length/all_cars[c_idx].speed_in_intersection + (all_cars[c_idx].OT+all_cars[c_idx].D)
-                        bound += cfg.HEADWAY/all_cars[c_idx].speed_in_intersection
-                        if all_cars[c_jdx].turning == 'S' and all_cars[c_idx].turning != 'S':
-                            bound += (cfg.MAX_SPEED-cfg.TURN_SPEED)*(cfg.CCZ_DEC2_LEN)/(cfg.MAX_SPEED*(cfg.MAX_SPEED+cfg.TURN_SPEED))
+                        bound = all_cars[c_idx].length/cfg.MAX_SPEED + (all_cars[c_idx].OT+all_cars[c_idx].D)
+                        bound += cfg.HEADWAY/cfg.MAX_SPEED
                         bound = bound - all_cars[c_jdx].OT
                         tmp_conts = solver.Constraint(bound, solver.infinity())
                         tmp_conts.SetCoefficient(all_cars[c_jdx].D, 1)
                         #print("eq1-2 ", bound, all_cars[c_idx]['ID'], all_cars[c_jdx]['ID'])
 
-                elif (type(all_cars[c_jdx].D)!=float or type(all_cars[c_idx].D)!=float):
+                else:   # Two new cars
                     if (all_cars[c_idx].OT > all_cars[c_jdx].OT):
-
-
-                        bound = all_cars[c_jdx].length/all_cars[c_jdx].speed_in_intersection - all_cars[c_idx].OT+all_cars[c_jdx].OT
-                        bound += cfg.HEADWAY/all_cars[c_jdx].speed_in_intersection
-                        if all_cars[c_idx].turning == 'S' and all_cars[c_jdx].turning != 'S':
-                            bound += (cfg.MAX_SPEED-cfg.TURN_SPEED)*(cfg.CCZ_DEC2_LEN)/(cfg.MAX_SPEED*(cfg.MAX_SPEED+cfg.TURN_SPEED))
+                        bound = all_cars[c_jdx].length/cfg.MAX_SPEED - all_cars[c_idx].OT+all_cars[c_jdx].OT
+                        bound += cfg.HEADWAY/cfg.MAX_SPEED
                         tmp_conts = solver.Constraint(bound, solver.infinity())
                         tmp_conts.SetCoefficient(all_cars[c_idx].D, 1)
                         tmp_conts.SetCoefficient(all_cars[c_jdx].D, -1)
                         #print("eq1-3 ", bound, all_cars[c_idx]['ID'], all_cars[c_jdx]['ID'])
                     elif (all_cars[c_idx].OT < all_cars[c_jdx].OT):
-
-                        bound = all_cars[c_idx].length/all_cars[c_idx].speed_in_intersection + all_cars[c_idx].OT-all_cars[c_jdx].OT
-                        bound += cfg.HEADWAY/all_cars[c_idx].speed_in_intersection
-                        if all_cars[c_jdx].turning == 'S' and all_cars[c_idx].turning != 'S':
-                            bound += (cfg.MAX_SPEED-cfg.TURN_SPEED)*(cfg.CCZ_DEC2_LEN)/(cfg.MAX_SPEED*(cfg.MAX_SPEED+cfg.TURN_SPEED))
+                        bound = all_cars[c_jdx].length/cfg.MAX_SPEED + all_cars[c_idx].OT-all_cars[c_jdx].OT
+                        bound += cfg.HEADWAY/cfg.MAX_SPEED
                         tmp_conts = solver.Constraint(bound, solver.infinity())
                         tmp_conts.SetCoefficient(all_cars[c_idx].D, -1)
                         tmp_conts.SetCoefficient(all_cars[c_jdx].D, 1)
                         #print("eq1-4 ", bound, all_cars[c_idx]['ID'], all_cars[c_jdx]['ID'])
-
 
 
     # part 5: set constrain (11)
@@ -127,9 +110,11 @@ def Icacc(old_cars, new_cars):
                 tau_S1_S2 = ans[0]
                 tau_S2_S1 = ans[1]
 
-                bound = old_cars[oc_idx].D + old_cars[oc_idx].OT - new_cars[nc_idx].OT + tau_S2_S1
-                tmp_conts4 = solver.Constraint(bound, solver.infinity())
-                tmp_conts4.SetCoefficient(new_cars[nc_idx].D, 1)
+                flag = solver.IntVar(0, 1, 'flagg'+str(nc_idx)+"_"+str(oc_idx))
+
+                bound = -old_cars[oc_idx].D-old_cars[oc_idx].OT + new_cars[nc_idx].OT + tau_S1_S2
+                tmp_conts3 = solver.Constraint(bound, solver.infinity())
+                tmp_conts3.SetCoefficient(new_cars[nc_idx].D, -1)
 
 
                 #print("eq3-1 ", bound, old_cars[oc_idx]['ID'], new_cars[nc_idx]['ID'])
@@ -144,16 +129,14 @@ def Icacc(old_cars, new_cars):
     # part 8: Solve the problem
     sol_status = solver.Solve()
     if (sol_status == 2):
-        # Unfeasible
-        #print ([car.position for car in old_cars])
-        #print ([car.position for car in new_cars])
-        print("Error: no fesible solution")
-        exit()
+        # Unsolvable
+        print ([car.position for car in old_cars])
+        print ([car.position for car in new_cars])
 
 
     for nc_idx in range(len(new_cars)):
         new_cars[nc_idx].D = new_cars[nc_idx].D.solution_value()
-
+    
     #print('Solution:')
     avg_delay = 0
     for nc_idx in range(len(new_cars)):
@@ -191,8 +174,8 @@ def IcaccPlus(old_cars, new_cars):
 
                 if (type(all_cars[c_jdx].D)==float or type(all_cars[c_idx].D)==float):
                     if (type(all_cars[c_idx].D)!=float and type(all_cars[c_jdx].D)==float):
-                        bound = all_cars[c_jdx].length/all_cars[c_jdx].speed_in_intersection + (all_cars[c_jdx].OT+all_cars[c_jdx].D)
-                        bound += cfg.HEADWAY/all_cars[c_jdx].speed_in_intersection
+                        bound = all_cars[c_jdx].length/all_cars[c_jdx].speed_in_int + (all_cars[c_jdx].OT+all_cars[c_jdx].D)
+                        bound += cfg.HEADWAY/all_cars[c_jdx].speed_in_int
                         if all_cars[c_idx].turning == 'S' and all_cars[c_jdx].turning != 'S':
                             bound += (cfg.MAX_SPEED-cfg.TURN_SPEED)*(cfg.CCZ_DEC2_LEN)/(cfg.MAX_SPEED*(cfg.MAX_SPEED+cfg.TURN_SPEED))
                         bound = bound - all_cars[c_idx].OT
@@ -200,8 +183,8 @@ def IcaccPlus(old_cars, new_cars):
                         tmp_conts.SetCoefficient(all_cars[c_idx].D, 1)
                         #print("eq1-1 ", bound, all_cars[c_idx]['ID'], all_cars[c_jdx]['ID'])
                     elif (type(all_cars[c_idx].D)==float and type(all_cars[c_jdx].D)!=float):
-                        bound = all_cars[c_idx].length/all_cars[c_idx].speed_in_intersection + (all_cars[c_idx].OT+all_cars[c_idx].D)
-                        bound += cfg.HEADWAY/all_cars[c_idx].speed_in_intersection
+                        bound = all_cars[c_idx].length/all_cars[c_idx].speed_in_int + (all_cars[c_idx].OT+all_cars[c_idx].D)
+                        bound += cfg.HEADWAY/all_cars[c_idx].speed_in_int
                         if all_cars[c_jdx].turning == 'S' and all_cars[c_idx].turning != 'S':
                             bound += (cfg.MAX_SPEED-cfg.TURN_SPEED)*(cfg.CCZ_DEC2_LEN)/(cfg.MAX_SPEED*(cfg.MAX_SPEED+cfg.TURN_SPEED))
                         bound = bound - all_cars[c_jdx].OT
@@ -213,8 +196,8 @@ def IcaccPlus(old_cars, new_cars):
                     if (all_cars[c_idx].OT > all_cars[c_jdx].OT):
 
 
-                        bound = all_cars[c_jdx].length/all_cars[c_jdx].speed_in_intersection - all_cars[c_idx].OT+all_cars[c_jdx].OT
-                        bound += cfg.HEADWAY/all_cars[c_jdx].speed_in_intersection
+                        bound = all_cars[c_jdx].length/all_cars[c_jdx].speed_in_int - all_cars[c_idx].OT+all_cars[c_jdx].OT
+                        bound += cfg.HEADWAY/all_cars[c_jdx].speed_in_int
                         if all_cars[c_idx].turning == 'S' and all_cars[c_jdx].turning != 'S':
                             bound += (cfg.MAX_SPEED-cfg.TURN_SPEED)*(cfg.CCZ_DEC2_LEN)/(cfg.MAX_SPEED*(cfg.MAX_SPEED+cfg.TURN_SPEED))
                         tmp_conts = solver.Constraint(bound, solver.infinity())
@@ -223,8 +206,8 @@ def IcaccPlus(old_cars, new_cars):
                         #print("eq1-3 ", bound, all_cars[c_idx]['ID'], all_cars[c_jdx]['ID'])
                     elif (all_cars[c_idx].OT < all_cars[c_jdx].OT):
 
-                        bound = all_cars[c_idx].length/all_cars[c_idx].speed_in_intersection + all_cars[c_idx].OT-all_cars[c_jdx].OT
-                        bound += cfg.HEADWAY/all_cars[c_idx].speed_in_intersection
+                        bound = all_cars[c_idx].length/all_cars[c_idx].speed_in_int + all_cars[c_idx].OT-all_cars[c_jdx].OT
+                        bound += cfg.HEADWAY/all_cars[c_idx].speed_in_int
                         if all_cars[c_jdx].turning == 'S' and all_cars[c_idx].turning != 'S':
                             bound += (cfg.MAX_SPEED-cfg.TURN_SPEED)*(cfg.CCZ_DEC2_LEN)/(cfg.MAX_SPEED*(cfg.MAX_SPEED+cfg.TURN_SPEED))
                         tmp_conts = solver.Constraint(bound, solver.infinity())
@@ -374,6 +357,7 @@ def Fcfs(old_cars, new_cars):
         IcaccPlus(old_cars, [car])
         old_cars.append(car)
 
+    del new_cars[:]
 
 
 def FixedSignal(old_cars, new_cars, iteration):

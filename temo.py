@@ -163,7 +163,7 @@ def run():
                     car.CC_stage = '0 Not Handled Yet'
 
                     # Put car into the CC zontrol
-                    if not cc_list.has_key(car_id):
+                    if not car_id in cc_list:
                         cc_list[car_id] = car
 
 
