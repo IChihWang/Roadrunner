@@ -167,6 +167,7 @@ def run():
     print("Average total delay: ", total_delays/car_num)
     print("Number of car: ", car_num)
 
+    file_name = 'result/result.csv'
     with open(file_name, 'a', newline='') as csvfile:
         writer = csv.writer(csvfile, dialect='excel-tab', quoting=csv.QUOTE_MINIMAL, delimiter = ',')
         to_write = [sys.argv[1], sys.argv[2], "_", car_num,
@@ -174,10 +175,11 @@ def run():
                     total_fuel_consumption/car_num]
         writer.writerow(to_write)
 
-    traci.close()
+    print(simu_step, "======== Here")
+
     sys.stdout.flush()
 
-    return (simu_step*10)//1/10.0
+    traci.close()
 
 
 
@@ -216,6 +218,6 @@ if __name__ == "__main__":
                                  "--collision.mingap-factor", "0"])
 
         # 4. Start running SUMO
-        testtime = run()
+        run()
     except:
-        None
+        traceback.print_exc()
