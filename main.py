@@ -27,6 +27,7 @@ import traci
 import traceback
 
 import config as cfg
+import csv
 
 from gen_route import generate_routefile
 
@@ -49,8 +50,19 @@ def run():
     simu_step = 0
 
     intersections = [IntersectionManager("00%i"%(i) + '_' + "001") for i in range(1, 3)]
-    intersections[0].connect(1, intersections[1], 3)
+
+    if sys.argv[4] == "T":
+        intersections[0].connect(1, intersections[1], 3)
+    else:
+        pass
+
     turning_track_dict = dict()
+
+    file_name = "utility_time_"
+    file_name += sys.argv[1] + "_" + sys.argv[2] + "_" + sys.argv[3] + "_" + sys.argv[4]
+    file_name += '.csv'
+    csvfile = open('./result/'+file_name, 'a')
+
 
     try:
         while traci.simulation.getMinExpectedNumber() > 0:
@@ -109,6 +121,24 @@ def run():
             for intersection_manager in intersections:
                 intersection_manager.run(simu_step)
 
+            #lane_utility[0].append((simu_step, cfg.TOTAL_LEN-intersections[0].my_road_info[1]['avail_len']))
+            #lane_utility[1].append((simu_step, cfg.TOTAL_LEN-intersections[1].my_road_info[3]['avail_len']))
+
+
+            file_writer = csv.writer(csvfile, lineterminator='\n')
+
+            to_write_list = [simu_step]
+            for lane_idx in range(cfg.LANE_NUM_PER_DIRECTION):
+                my_lane = 1*cfg.LANE_NUM_PER_DIRECTION+lane_idx
+                utility = (cfg.TOTAL_LEN-intersections[0].my_road_info[my_lane]['avail_len'])/cfg.TOTAL_LEN
+                to_write_list.append(utility)
+
+                my_lane = 3*cfg.LANE_NUM_PER_DIRECTION+lane_idx
+                utility = (cfg.TOTAL_LEN-intersections[1].my_road_info[my_lane]['avail_len'])/cfg.TOTAL_LEN
+                to_write_list.append(utility)
+
+            file_writer.writerow(to_write_list)
+
             simu_step += cfg.TIME_STEP
 
 
@@ -119,7 +149,7 @@ def run():
 
     #debug_t = threading.Thread(target=debug_ring)
     #debug_t.start()
-    print(sys.argv[1], int(sys.argv[2]), int(sys.argv[3]))
+    print(sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), sys.argv[4])
 
     # Print out the measurements
     #print("Average total delay: ", total_delays/car_num)
@@ -127,6 +157,9 @@ def run():
     print(intersection_manager.total_delays/intersection_manager.car_num, intersection_manager.total_delays_by_sche/intersection_manager.car_num, intersection_manager.car_num)
 
     print("avg_fuel = ",intersection_manager.total_fuel_consumption/intersection_manager.fuel_consumption_count)
+
+
+
 
     sys.stdout.flush()
 
@@ -149,19 +182,14 @@ def get_options():
 ###########################
 # Main function
 if __name__ == "__main__":
-    print("Usage: python code.py <arrival_rate (0~1.0)> <seed> <schedular>")
+    print("Usage: python code.py <arrival_rate (0~1.0)> <seed> <schedular> <spillback T/F>")
+    sys.argv[4]
 
     seed = int(sys.argv[2])
     random.seed(seed)  # make tests reproducible
     numpy.random.seed(seed)
 
-    options = get_options()
-
-    # this script has been called from the command line. It will start sumo as a server, then connect and run
-    if options.nogui:
-        sumoBinary = checkBinary('sumo')
-    else:
-        sumoBinary = checkBinary('sumo-gui')
+    sumoBinary = checkBinary('sumo')
 
     # 0. Generate the intersection information files
     os.system("bash gen_intersection/gen_data.sh " + str(cfg.LANE_NUM_PER_DIRECTION))
