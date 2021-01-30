@@ -44,6 +44,7 @@ from IntersectionManager import IntersectionManager
 
 ###################
 
+vehNr = 0
 
 def run():
     """execute the TraCI control loop"""
@@ -61,7 +62,7 @@ def run():
     file_name = "utility_time_"
     file_name += sys.argv[1] + "_" + sys.argv[2] + "_" + sys.argv[3] + "_" + sys.argv[4]
     file_name += '.csv'
-    csvfile = open('./result/'+file_name, 'a')
+    #csvfile = open('./result/'+file_name, 'a')
 
 
     try:
@@ -124,7 +125,7 @@ def run():
             #lane_utility[0].append((simu_step, cfg.TOTAL_LEN-intersections[0].my_road_info[1]['avail_len']))
             #lane_utility[1].append((simu_step, cfg.TOTAL_LEN-intersections[1].my_road_info[3]['avail_len']))
 
-
+            '''
             file_writer = csv.writer(csvfile, lineterminator='\n')
 
             to_write_list = [simu_step]
@@ -138,7 +139,7 @@ def run():
                 to_write_list.append(utility)
 
             file_writer.writerow(to_write_list)
-
+            '''
             simu_step += cfg.TIME_STEP
 
 
@@ -159,7 +160,18 @@ def run():
     print("avg_fuel = ",intersection_manager.total_fuel_consumption/intersection_manager.fuel_consumption_count)
 
 
+    file_name2 = 'result/result.csv'
 
+    with open(file_name2, 'a', newline='') as csvfile2:
+        writer2 = csv.writer(csvfile2, dialect='excel-tab', quoting=csv.QUOTE_MINIMAL, delimiter = ',')
+        to_write2 = [sys.argv[1], sys.argv[2], sys.argv[3],
+                    sys.argv[4], "_", simu_step,
+                    intersections[0].car_num,
+                    intersections[1].car_num,
+                    vehNr,
+                    vehNr/6
+                    ]
+        writer2.writerow(to_write2)
 
     sys.stdout.flush()
 
@@ -196,7 +208,7 @@ if __name__ == "__main__":
 
     # 1. Generate the route file for this simulation
     arrival_rate = float(sys.argv[1])
-    generate_routefile(arrival_rate)
+    vehNr = generate_routefile(arrival_rate)
 
 
 

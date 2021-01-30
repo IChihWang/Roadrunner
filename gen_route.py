@@ -138,4 +138,4 @@ def generate_routefile(arrival_rate):
                     #return(idllist)
 
         print("</routes>", file=routes)
-    return(idllist)
+    return(vehNr)
