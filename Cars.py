@@ -178,7 +178,7 @@ class Car:
             if slow_down_speed < 0:
                 print(self.ID, T, max_total_time, slow_down_speed)
                 print(self.ID, x1, x2, v1, vm)
-                
+
             traci.vehicle.setMaxSpeed(self.ID, slow_down_speed)
             dec_time = (self.position-(cfg.CCZ_ACC_LEN+cfg.CCZ_DEC2_LEN)) / ((my_speed+slow_down_speed)/2)
             self.CC_slowdown_timer = dec_time
@@ -293,9 +293,13 @@ class Car:
             # Delta: some small error that SUMO unsync with ideal case
             delta = (cfg.CCZ_LEN-self.CC_shift)-self.position
             dec_time = (cfg.CCZ_ACC_LEN-delta) / ((cfg.MAX_SPEED+speed)/2)
-            traci.vehicle.setMaxSpeed(self.ID, speed)
-            traci.vehicle.slowDown(self.ID, speed, dec_time)
-            self.CC_slowdown_timer = dec_time
+
+            if dec_time < 0:
+                self.CC_state = "Keep_Max_speed"
+            else:
+                traci.vehicle.setMaxSpeed(self.ID, speed)
+                traci.vehicle.slowDown(self.ID, speed, dec_time)
+                self.CC_slowdown_timer = dec_time
 
         elif (self.CC_state == "CruiseControl_decelerate") and (self.CC_slowdown_timer <= 0):
             traci.vehicle.setSpeed(self.ID, self.CC_slow_speed)

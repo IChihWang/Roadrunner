@@ -202,6 +202,8 @@ class IntersectionManager:
                     print("DEBUG: Car didn't arrive at the intersection at right time.")
 
                     print("ID", car.ID)
+                    print("is_spillback", car.is_spillback)
+                    print("is_spillback_strict", car.is_spillback_strict)
                     print("OT+D", car.D+car.OT)
                     print("lane", car.lane)
                     print("D", car.D)
@@ -233,6 +235,12 @@ class IntersectionManager:
 
                 if (car.CC_state == "Preseting_done"):
                     car.CC_state = "CruiseControl_ready"
+            elif car.position <= cfg.CCZ_LEN:
+                self.ccz_list[car_id] = car
+                to_be_deleted.append(car_id)
+
+                if (car.CC_state == None) or (not ("Platoon" in car.CC_state or "Entering" in car.CC_state)):
+                    car.CC_state = "Keep_Max_speed"
 
         for car_id in to_be_deleted:
             del self.pz_list[car_id]
