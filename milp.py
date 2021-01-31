@@ -205,19 +205,10 @@ def IcaccPlus(old_cars, new_cars, advised_n_sched_car, pedestrian_time_mark_list
             last_car_delay_lane[lane_idx] = current_delay
 
 
+    head_of_line_blocking_position = [cfg.TOTAL_LEN*2]*cfg.LANE_NUM_PER_DIRECTION*4
     for dst_lane_idx in range(len(others_road_info)):
-        # Doesn't connected to other intersections
-        if others_road_info[dst_lane_idx] == None:
-            for lane_idx in range(len(others_road_info)):
-                for car in new_car_src_dst_lane[lane_idx][dst_lane_idx]:
-                    if car.turning == 'S':
-                        car.D = solver.NumVar(0, solver.infinity(), 'd'+str(car.ID))
-                    else:
-                        min_d = (2*cfg.CCZ_DEC2_LEN/(cfg.MAX_SPEED+cfg.TURN_SPEED)) - (cfg.CCZ_DEC2_LEN/cfg.MAX_SPEED)
-                        car.D = solver.NumVar(min_d, solver.infinity(), 'd'+str(car.ID))
-
         # Connected to other intersections
-        else:
+        if others_road_info[dst_lane_idx] != None:
             affected_car_count_list = [car_count_src_dst_lane[lane_idx][dst_lane_idx] for lane_idx in range(len(others_road_info))]
             sorted_lane_idx_list = numpy.argsort(affected_car_count_list)
 
@@ -235,7 +226,7 @@ def IcaccPlus(old_cars, new_cars, advised_n_sched_car, pedestrian_time_mark_list
 
                         #spillback_delay_multiply_factor = accumulate_car_len//(cfg.TOTAL_LEN/2)
                         #spillback_delay_multiply_factor = accumulate_car_len/(cfg.TOTAL_LEN/2)
-                        spillback_delay_multiply_factor = accumulate_car_len/(cfg.CCZ_LEN+cfg.BZ_LEN+cfg.GZ_LEN)
+                        spillback_delay_multiply_factor = accumulate_car_len/(cfg.CCZ_LEN+cfg.BZ_LEN)
                         #spillback_delay = base_delay + recorded_delay*spillback_delay_multiply_factor
                         #spillback_delay = base_delay+recorded_delay*spillback_delay_multiply_factor
                         spillback_delay = recorded_delay*spillback_delay_multiply_factor
@@ -246,51 +237,46 @@ def IcaccPlus(old_cars, new_cars, advised_n_sched_car, pedestrian_time_mark_list
                             accumulate_car_len = (car.length + cfg.HEADWAY)
                             spillback_delay = base_delay
                         car.is_spillback = True
+                        if accumulate_car_len > (cfg.CCZ_LEN+cfg.BZ_LEN):
+                            car.is_spillback_strict = True
+                        else:
+                            car.is_spillback_strict = False
+
                         spillback_delay_record[dst_lane_idx] = recorded_delay
                     else:
                         spillback_delay_record[dst_lane_idx] = 0
 
-                    if new_cars[c_idx].turning == 'S':
-                        car.D = solver.NumVar(max(0, spillback_delay), solver.infinity(), 'd'+str(car.ID))
+                    if car.is_spillback_strict == True:
+                        new_cars.remove(car)
+                        if car.position < head_of_line_blocking_position[lane_idx]:
+                            head_of_line_blocking_position[lane_idx] = car.position
                     else:
-                        min_d = (2*cfg.CCZ_DEC2_LEN/(cfg.MAX_SPEED+cfg.TURN_SPEED)) - (cfg.CCZ_DEC2_LEN/cfg.MAX_SPEED)
-                        car.D = solver.NumVar(max(min_d, spillback_delay), solver.infinity(), 'd'+str(car.ID))
+                        min_d_add = 0
+                        if car.position < cfg.CCZ_LEN:
+                            min_d_add = (2*2*cfg.CCZ_ACC_LEN/(cfg.MAX_SPEED+0)) - (2*cfg.CCZ_ACC_LEN/cfg.MAX_SPEED)
+
+                        if car.turning == 'S':
+                            car.D = solver.NumVar(max(0+min_d_add, spillback_delay), solver.infinity(), 'd'+str(car.ID))
+                        else:
+                            min_d = (2*cfg.CCZ_DEC2_LEN/(cfg.MAX_SPEED+cfg.TURN_SPEED)) - (cfg.CCZ_DEC2_LEN/cfg.MAX_SPEED)
+                            car.D = solver.NumVar(max(min_d+min_d_add, spillback_delay), solver.infinity(), 'd'+str(car.ID))
 
 
-    '''
-    for car in new_cars:
-        lane_idx = car.dst_lane
-        accumulate_car_len_lane[lane_idx] += (car.length + cfg.HEADWAY)
+    for dst_lane_idx in range(len(others_road_info)):
+        # Doesn't connected to other intersections
+        if others_road_info[dst_lane_idx] == None:
+            for lane_idx in range(len(others_road_info)):
+                for car in new_car_src_dst_lane[lane_idx][dst_lane_idx]:
+                    if car.position > head_of_line_blocking_position[lane_idx]:
+                        new_cars.remove(car)
+                        pass    # Blocked by the car at the front
+                    else:
+                        if car.turning == 'S':
+                            car.D = solver.NumVar(0, solver.infinity(), 'd'+str(car.ID))
+                        else:
+                            min_d = (2*cfg.CCZ_DEC2_LEN/(cfg.MAX_SPEED+cfg.TURN_SPEED)) - (cfg.CCZ_DEC2_LEN/cfg.MAX_SPEED)
+                            car.D = solver.NumVar(min_d, solver.infinity(), 'd'+str(car.ID))
 
-    for car in old_cars:
-        lane_idx = car.dst_lane
-        if others_road_info[lane_idx] != None:
-            others_road_info[lane_idx]['avail_len'] -= (car.length + cfg.HEADWAY)
-    for lane_idx in range(len(others_road_info)):
-        if others_road_info[lane_idx] != None:
-            if accumulate_car_len_lane[lane_idx] > others_road_info[lane_idx]['avail_len']:
-                spillback_delay_lane[lane_idx] = others_road_info[lane_idx]['delay']
-
-
-    for c_idx in range(len(new_cars)):
-        lane_idx = new_cars[c_idx].dst_lane
-        car_idx = new_cars[c_idx].ID.split("_")
-        spillback_delay = spillback_delay_lane[lane_idx]
-        if others_road_info[lane_idx] != None:
-            multiply_factor = (cfg.TOTAL_LEN - others_road_info[lane_idx]['avail_len'] + accumulate_car_len_lane[lane_idx])/(cfg.CCZ_LEN+cfg.BZ_LEN)
-            spillback_delay = spillback_delay*multiply_factor
-            #if spillback_delay > 0.01:
-                #print(spillback_delay, multiply_factor)
-
-        if spillback_delay > 0:
-            #print("SBD: " + new_cars[c_idx].ID, spillback_delay)
-            new_cars[c_idx].is_spillback = True
-        if new_cars[c_idx].turning == 'S':
-            new_cars[c_idx].D = solver.NumVar(max(0, spillback_delay), solver.infinity(), 'd'+str(c_idx))
-        else:
-            min_d = (2*cfg.CCZ_DEC2_LEN/(cfg.MAX_SPEED+cfg.TURN_SPEED)) - (cfg.CCZ_DEC2_LEN/cfg.MAX_SPEED)
-            new_cars[c_idx].D = solver.NumVar(max(min_d, spillback_delay), solver.infinity(), 'd'+str(c_idx))
-    '''
 
     # part 4: set constrain (10)
     all_cars = old_cars+new_cars
@@ -502,6 +488,8 @@ def IcaccPlus(old_cars, new_cars, advised_n_sched_car, pedestrian_time_mark_list
         #print ([car.position for car in old_cars])
         #print ([car.position for car in new_cars])
         print("Error: no fesible solution")
+        car_id = [car.ID for car in new_cars]
+        print(car_id)
         exit()
 
     for nc_idx in range(len(new_cars)):

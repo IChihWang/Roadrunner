@@ -251,12 +251,15 @@ class IntersectionManager:
                 sched_car = []
                 n_sched_car = []
                 advised_n_sched_car = []
+
+
                 for car_id, car in self.car_list.items():
                     if car.zone == "GZ" or car.zone == "BZ" or car.zone == "CCZ":
                         if car.zone_state == "not_scheduled":
                             n_sched_car.append(car)
                         else:
                             sched_car.append(car)
+                            traci.vehicle.setColor(car_id, (100,250,92))
                     elif car.zone == "PZ" or car.zone == "AZ":
                         advised_n_sched_car.append(car)
 
@@ -264,9 +267,7 @@ class IntersectionManager:
                         traci.vehicle.setColor(car_id, (255,59,59))
 
 
-
                 for c_idx in range(len(n_sched_car)):
-                    traci.vehicle.setColor(n_sched_car[c_idx].ID, (100,250,92))
                     n_sched_car[c_idx].D = None
 
                 # Setting the pedestrian list
