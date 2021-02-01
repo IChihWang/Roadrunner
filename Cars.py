@@ -61,11 +61,13 @@ class Car:
         self.is_spillback_strict = False
 
         out_sub_lane = (cfg.LANE_NUM_PER_DIRECTION-lane%cfg.LANE_NUM_PER_DIRECTION-1)
+        self.dst_lane_changed_to = int(self.out_dir*cfg.LANE_NUM_PER_DIRECTION + out_sub_lane)
         if turning == 'R':
             out_sub_lane = 0
         elif turning == 'L':
             out_sub_lane = cfg.LANE_NUM_PER_DIRECTION-1
         self.dst_lane = int(self.out_dir*cfg.LANE_NUM_PER_DIRECTION + out_sub_lane)
+
 
         # Position: how far between it and the intersection (0 at the entry of intersection)
         self.position = cfg.AZ_LEN + cfg.PZ_LEN + cfg.GZ_LEN+ cfg.BZ_LEN + cfg.CCZ_LEN

@@ -352,6 +352,8 @@ class IntersectionManager:
                 lane_sub_idx = (cfg.LANE_NUM_PER_DIRECTION-lane%cfg.LANE_NUM_PER_DIRECTION-1)
                 out_sub_lane = (cfg.LANE_NUM_PER_DIRECTION-lane%cfg.LANE_NUM_PER_DIRECTION-1)
 
+                car.dst_lane_changed_to = int(car.out_dir*cfg.LANE_NUM_PER_DIRECTION + out_sub_lane)
+
                 '''
                 if car.turning == 'R':
                     out_sub_lane = 0

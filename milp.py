@@ -211,16 +211,78 @@ def IcaccPlus(old_cars, new_cars, advised_n_sched_car, pedestrian_time_mark_list
 
 
     sorted_new_cars = sorted(new_cars, key=lambda x: x.position, reverse=False)
-    head_of_line_blocking_position = [cfg.TOTAL_LEN*2]*cfg.LANE_NUM_PER_DIRECTION*4
-    accumulate_car_len = [0]*len(others_road_info)
+    head_of_line_blocking_position = [999999]*cfg.LANE_NUM_PER_DIRECTION*4
+    accumulate_car_len = [-999999]*len(others_road_info)
     recorded_delay = [0]*len(others_road_info)
     base_delay = [0]*len(others_road_info)
+    max_dst_lane_idx_list = [[-999999, -1] for i in range(4)]
     for dst_lane_idx in range(len(others_road_info)):
         if others_road_info[dst_lane_idx] != None:
-            accumulate_car_len[dst_lane_idx] = accumulate_car_len_lane[dst_lane_idx]-others_road_info[dst_lane_idx]['avail_len']+(cfg.CAR_MAX_LEN+cfg.HEADWAY)
+            accumulate_car_len[dst_lane_idx] = accumulate_car_len_lane[dst_lane_idx]-others_road_info[dst_lane_idx]['avail_len']+2*(cfg.CAR_MAX_LEN+cfg.HEADWAY)
             recorded_delay[dst_lane_idx] = max(others_road_info[dst_lane_idx]['delay'], spillback_delay_record[dst_lane_idx]) # To record the dispatch speed
             base_delay[dst_lane_idx] = recorded_delay
 
+            direction = dst_lane_idx//4
+            if max_dst_lane_idx_list[direction][0] < accumulate_car_len[dst_lane_idx]:
+                max_dst_lane_idx_list[direction][0] = accumulate_car_len[dst_lane_idx]
+                max_dst_lane_idx_list[direction][1] = dst_lane_idx
+
+    max_dst_lane_idx_list = [data[1] for data in max_dst_lane_idx_list]
+
+    #max_dst_lane_idx = numpy.argmax(accumulate_car_len)
+
+    for car in sorted_new_cars:
+
+        dst_lane_idx = car.dst_lane
+        lane_idx = car.lane
+        max_dst_lane_idx = max_dst_lane_idx_list[dst_lane_idx//4]
+        if others_road_info[dst_lane_idx] != None:
+            if car.position > head_of_line_blocking_position[lane_idx]:
+                new_cars.remove(car)    # Blocked by the car at the front
+                continue
+
+            accumulate_car_len[max_dst_lane_idx] += (car.length + cfg.HEADWAY)
+            spillback_delay = 0
+
+            if accumulate_car_len[max_dst_lane_idx] > 0:
+                spillback_delay_multiply_factor = accumulate_car_len[max_dst_lane_idx]/(cfg.CCZ_LEN)
+                spillback_delay = recorded_delay[max_dst_lane_idx]*(spillback_delay_multiply_factor)
+
+                '''
+                if last_car_delay_lane[max_dst_lane_idx] > spillback_delay:    # To make space with front batch
+                    base_delay[max_dst_lane_idx] = last_car_delay_lane[max_dst_lane_idx]
+                    last_car_delay_lane[max_dst_lane_idx] = -1       # Ensure that this is only called once
+                    accumulate_car_len[max_dst_lane_idx] = (car.length + cfg.HEADWAY)
+                    spillback_delay = base_delay[max_dst_lane_idx]
+                '''
+                #print(car.ID, max_dst_lane_idx,accumulate_car_len[max_dst_lane_idx], dst_lane_idx, accumulate_car_len[dst_lane_idx])
+                car.is_spillback = True
+                if accumulate_car_len[max_dst_lane_idx] > (cfg.CCZ_LEN):
+                    car.is_spillback_strict = True
+                else:
+                    car.is_spillback_strict = False
+
+                spillback_delay_record[max_dst_lane_idx] = recorded_delay[max_dst_lane_idx]
+            else:
+                spillback_delay_record[max_dst_lane_idx] = 0
+
+            if car.is_spillback_strict == True:
+                new_cars.remove(car)
+                if car.position < head_of_line_blocking_position[lane_idx]:
+                    head_of_line_blocking_position[lane_idx] = car.position
+            else:
+                min_d_add = 0
+                if car.position < cfg.CCZ_LEN:
+                    min_d_add = (2*2*cfg.CCZ_ACC_LEN/(cfg.MAX_SPEED+0)) - (2*cfg.CCZ_ACC_LEN/cfg.MAX_SPEED)
+
+                if car.turning == 'S':
+                    car.D = solver.NumVar(max(0+min_d_add, spillback_delay), solver.infinity(), 'd'+str(car.ID))
+                else:
+                    min_d = (2*cfg.CCZ_DEC2_LEN/(cfg.MAX_SPEED+cfg.TURN_SPEED)) - (cfg.CCZ_DEC2_LEN/cfg.MAX_SPEED)
+                    car.D = solver.NumVar(max(min_d+min_d_add, spillback_delay), solver.infinity(), 'd'+str(car.ID))
+
+
+    '''
     for car in sorted_new_cars:
 
         dst_lane_idx = car.dst_lane
@@ -235,7 +297,7 @@ def IcaccPlus(old_cars, new_cars, advised_n_sched_car, pedestrian_time_mark_list
 
             if accumulate_car_len[dst_lane_idx] > 0:
                 spillback_delay_multiply_factor = accumulate_car_len[dst_lane_idx]/(cfg.CCZ_LEN)
-                spillback_delay = recorded_delay[dst_lane_idx]*spillback_delay_multiply_factor
+                spillback_delay = recorded_delay[dst_lane_idx]*(1+spillback_delay_multiply_factor)
 
                 if last_car_delay_lane[dst_lane_idx] > spillback_delay:    # To make space with front batch
                     base_delay[dst_lane_idx] = last_car_delay_lane[dst_lane_idx]
@@ -268,7 +330,7 @@ def IcaccPlus(old_cars, new_cars, advised_n_sched_car, pedestrian_time_mark_list
                     min_d = (2*cfg.CCZ_DEC2_LEN/(cfg.MAX_SPEED+cfg.TURN_SPEED)) - (cfg.CCZ_DEC2_LEN/cfg.MAX_SPEED)
                     car.D = solver.NumVar(max(min_d+min_d_add, spillback_delay), solver.infinity(), 'd'+str(car.ID))
 
-
+    '''
 
 
 
