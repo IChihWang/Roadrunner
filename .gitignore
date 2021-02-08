@@ -11,3 +11,4 @@ get_inter_info.pyc
 advise_info/desktop.ini
 gen_intersection/advise_data/desktop.ini
 inter_info/desktop.ini
+__pycache__/

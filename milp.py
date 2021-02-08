@@ -233,6 +233,9 @@ def IcaccPlus(old_cars, new_cars, advised_n_sched_car, pedestrian_time_mark_list
 
     for car in sorted_new_cars:
 
+        car.is_spillback = False
+        car.is_spillback_strict = False
+
         dst_lane_idx = car.dst_lane
         lane_idx = car.lane
         max_dst_lane_idx = max_dst_lane_idx_list[dst_lane_idx//4]
