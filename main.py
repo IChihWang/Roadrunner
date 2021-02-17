@@ -66,6 +66,9 @@ def run():
 
 
     try:
+        # Record car info
+        car_info = dict()
+
         while traci.simulation.getMinExpectedNumber() > 0:
 
             if (simu_step*10)//1/10.0 == cfg.N_TIME_STEP:
@@ -101,23 +104,51 @@ def run():
 
                 lane_id = traci.vehicle.getLaneID(car_id)
 
+                # Dummy: Generate routes (turnings)
+                if not car_id in car_info:
+                    car_info[car_id] = dict()
+                    car_info[car_id]["route"] = [car_id[0], car_id[1]]
+
+
                 is_handled = False
                 for intersection_manager in intersections:
-                    if intersection_manager.check_in_my_region(lane_id):
+                    if (intersection_manager.check_in_my_region(lane_id) == "On my lane"):
 
-                        if not car_id in turning_track_dict:
-                            turning_track_dict[car_id] = [0, intersection_manager]
-                        elif not turning_track_dict[car_id][1] is intersection_manager:
-                            turning_track_dict[car_id] = [1, intersection_manager]
-                        turning_idx = turning_track_dict[car_id][0]
-                        car_turn = car_id[turning_idx]
+                        current_turn = car_info[car_id]["route"][0]
+                        next_turn = car_info[car_id]["route"][1]
 
+                        intersection_manager.update_car(car_id, lane_id, simu_step, current_turn, next_turn)
                         is_handled = True
-                        intersection_manager.update_car(car_id, lane_id, simu_step, car_turn)
+                        car_info[car_id]["inter_status"] = "On my lane"
+
+                        break
+                    elif (intersection_manager.check_in_my_region(lane_id) == "In my intersection"):
+
+                        # Check if the car enter the intersection (by changing state from "On my lane" to "in intersection")
+                        if (car_info[car_id]["inter_status"] == "On my lane"):
+                            car_info[car_id]["route"].pop(0)
+
+                        current_turn = car_info[car_id]["route"][0]
+                        next_turn = car_info[car_id]["route"][1]
+
+                        intersection_manager.update_car(car_id, lane_id, simu_step, current_turn, next_turn)
+                        is_handled = True
+                        car_info[car_id]["inter_status"] = "In my intersection"
                         break
                 if not is_handled:
                     # Leaving intersections
                     traci.vehicle.setSpeed(car_id, cfg.MAX_SPEED)
+                    car_info[car_id]["inter_status"] = "None"
+
+
+            # Remove cars
+            car_to_delete = []
+            for car_id in car_info:
+                if not car_id in all_c:
+                    car_to_delete.append(car_id)
+            for car_id in car_to_delete:
+                del car_info[car_id]
+
 
             for intersection_manager in intersections:
                 intersection_manager.run(simu_step)

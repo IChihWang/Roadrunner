@@ -60,7 +60,7 @@ class IntersectionManager:
                 2
             3   i   1
                 0
-        '''
+        ''' #(Lane index are all counter-clockwise)
         for lane_idx in range(cfg.LANE_NUM_PER_DIRECTION):
             my_lane = my_direction*cfg.LANE_NUM_PER_DIRECTION+lane_idx
             its_lane = its_direction*cfg.LANE_NUM_PER_DIRECTION+(cfg.LANE_NUM_PER_DIRECTION-lane_idx-1)
@@ -76,16 +76,16 @@ class IntersectionManager:
 
     def check_in_my_region(self, lane_id):
         if lane_id in self.in_lanes:
-            return True
+            return "On my lane"
         else:
             lane_data = lane_id.split("_")
             lane_id_short = lane_data[0] + "_" + lane_data[1]
             if lane_id_short == self.ID:
-                return True
+                return "In my intersection"
             else:
-                return False
+                return "Not me"
 
-    def change_turning(self, car_id, car_turn, intersection_dir):
+    def update_path(self, car_id, car_turn, intersection_dir):
         id_data = self.ID.split('_')
         x_idx = int(id_data[0])
         y_idx = int(id_data[1])
@@ -119,7 +119,7 @@ class IntersectionManager:
         traci.vehicle.setMaxSpeed(car_id, cfg.MAX_SPEED)
         traci.vehicle.setColor(car_id, (255,255,255))
 
-    def update_car(self, car_id, lane_id, simu_step, car_turn):
+    def update_car(self, car_id, lane_id, simu_step, car_turn, next_turn):
         if lane_id in self.in_lanes:
             lane_data = lane_id.split("_")
             lane_direction = int(lane_data[2])
@@ -134,13 +134,16 @@ class IntersectionManager:
                 length = traci.vehicle.getLength(car_id)
                 turning = car_turn
 
-                new_car = Car(car_id, length, lane, turning)
+                new_car = Car(car_id, length, lane, turning, next_turn)
                 new_car.Enter_T = simu_step - (traci.vehicle.getLanePosition(car_id))/cfg.MAX_SPEED
                 self.car_list[car_id] = new_car
 
                 traci.vehicle.setSpeed(car_id, cfg.MAX_SPEED)
 
-                self.change_turning(car_id, car_turn, lane_direction)
+                self.update_path(car_id, car_turn, lane_direction)
+
+            self.car_list[car_id].turn = car_turn
+            self.car_list[car_id].next_turn = next_turn
 
             # Set the position of each cars
             position = traci.lane.getLength(lane_id) - traci.vehicle.getLanePosition(car_id)
@@ -198,7 +201,7 @@ class IntersectionManager:
 
                 car.zone == "Intersection"
 
-                if car.D+car.OT <= -0.4 or car.D+car.OT >= 0.4:
+                if car.D+car.OT <= -0.3 or car.D+car.OT >= 0.3:
                     print("DEBUG: Car didn't arrive at the intersection at right time.")
 
                     print("ID", car.ID)
@@ -325,7 +328,9 @@ class IntersectionManager:
 
                 # Take over the speed control from the car
                 traci.vehicle.setSpeedMode(car_id, 0)
-                car.CC_state = "Preseting_start"
+
+                if car.CC_state == None:
+                    car.CC_state = "Preseting_start"
 
                 # Cancel the auto gap
                 traci.vehicle.setLaneChangeMode(car_id, 0)
@@ -349,26 +354,12 @@ class IntersectionManager:
                 lane = car.lane
                 car.desired_lane = car.lane
 
-                lane_sub_idx = (cfg.LANE_NUM_PER_DIRECTION-lane%cfg.LANE_NUM_PER_DIRECTION-1)
                 out_sub_lane = (cfg.LANE_NUM_PER_DIRECTION-lane%cfg.LANE_NUM_PER_DIRECTION-1)
+                car.dst_lane = int(car.out_direction*cfg.LANE_NUM_PER_DIRECTION + out_sub_lane)     # Destination lane before next lane change
 
-                car.dst_lane_changed_to = int(car.out_dir*cfg.LANE_NUM_PER_DIRECTION + out_sub_lane)
-
-                '''
-                if car.turning == 'R':
-                    out_sub_lane = 0
-                elif car.turning == 'L':
-                    out_sub_lane = cfg.LANE_NUM_PER_DIRECTION-1
-                '''
-                if car.ID[1] == 'R':
-                    out_sub_lane = 0
-                elif car.ID[1] == 'L':
-                    out_sub_lane = cfg.LANE_NUM_PER_DIRECTION-1
-
-                car.dst_lane = int(car.out_dir*cfg.LANE_NUM_PER_DIRECTION + out_sub_lane)
 
                 # Stay on its lane
-                traci.vehicle.changeLane(car_id, lane_sub_idx, 1.0)
+                traci.vehicle.changeLane(car_id, out_sub_lane, 1.0)
 
 
         ##########################################
@@ -464,6 +455,10 @@ class IntersectionManager:
             lane = car.lane
             car_accumulate_len_lane[lane] += car.length + cfg.HEADWAY
 
+            if car.position > cfg.TOTAL_LEN - cfg.AZ_LEN and lane != car.desired_lane:
+                car_accumulate_len_lane[car.desired_lane] += car.length + cfg.HEADWAY
+
+
             if car.position > car_position_with_delay_lane[lane] and isinstance(car.D, float):
                 car_position_with_delay_lane[lane] = car.position
                 #delay_lane[lane] = (car.OT+car.D)-(car.position/cfg.MAX_SPEED)
@@ -472,6 +467,7 @@ class IntersectionManager:
         for lane_idx in range(4*cfg.LANE_NUM_PER_DIRECTION):
             self.my_road_info[lane_idx]['avail_len'] = cfg.TOTAL_LEN - car_accumulate_len_lane[lane_idx]
             self.my_road_info[lane_idx]['delay'] = delay_lane[lane_idx]
+            self.my_road_info[lane_idx]['simu_step'] = simu_step
         #print(self.ID, self.others_road_info)
 
     # Compute teh max AT for pedestrian time
@@ -480,12 +476,12 @@ class IntersectionManager:
 
         for car in sched_car:
             # Compute the direction of entering/exiting for the intersection
-            in_dir = car.in_dir
-            out_dir = car.out_dir
+            in_dir = car.in_direction
+            out_dir = car.out_direction
 
             # Compute arrival time at the exiting point and entering point
             in_AT = car.OT + car.D + car.length/car.speed_in_intersection
-            out_AT = car.OT + car.D + car.length/cfg.MAX_SPEED + inter_length_data.getIntertime(car.lane, car.turning)
+            out_AT = car.OT + car.D + car.length/cfg.MAX_SPEED + inter_length_data.getIntertime(car.lane, car.current_turn)
 
             # Find max and update
             if in_AT > max_AT[in_dir]:

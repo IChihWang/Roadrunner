@@ -67,13 +67,13 @@ class Data:
         # Test if there is conflict between l1 & l2
         # and give the conflict region.
 
-        test_str = str(l1) + car1.turning + str(l2) + car2.turning
+        test_str = str(l1) + car1.current_turn + str(l2) + car2.current_turn
 
         if (test_str) in self.tau:
             val = self.tau[test_str].copy()
 
             # 0. Flip Xd, Yd if two car turn left from opposite directions
-            if (l2 >= cfg.LANE_NUM_PER_DIRECTION*2 and l2 < cfg.LANE_NUM_PER_DIRECTION*3) and (car1.turning == 'L' and car2.turning == 'L'):
+            if (l2 >= cfg.LANE_NUM_PER_DIRECTION*2 and l2 < cfg.LANE_NUM_PER_DIRECTION*3) and (car1.current_turn == 'L' and car2.current_turn == 'L'):
                 val['Xm'], val['Xd'] = val['Xd'], val['Xm']
 
 

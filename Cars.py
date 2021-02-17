@@ -26,24 +26,26 @@ import config as cfg
 import numpy as np
 
 class Car:
-    def __init__(self, car_id, length, lane, turning):
+    def __init__(self, car_id, length, lane, turn, next_turn):
         # ===== Profile of the car (Not change during the simulation) ==========
         self.ID = car_id
         self.length = length
-        self.turning = turning
+        self.current_turn = turn
+        self.next_turn = next_turn
 
-        self.in_dir = lane // cfg.LANE_NUM_PER_DIRECTION
-        self.out_dir = None
-        if turning == 'S':
-            self.out_dir = (self.in_dir+2)%4
-        elif turning == 'R':
-            self.out_dir = (self.in_dir+1)%4
-        elif turning == 'L':
-            self.out_dir = (self.in_dir-1)%4
+        self.in_direction = lane // cfg.LANE_NUM_PER_DIRECTION
+        self.out_direction = None
+        if turn == 'S':
+            self.out_direction = (self.in_direction+2)%4
+        elif turn == 'R':
+            self.out_direction = (self.in_direction+1)%4
+        elif turn == 'L':
+            self.out_direction = (self.in_direction-1)%4
+
 
         # Determine the speed in the intersection
         speed_in_intersection = cfg.TURN_SPEED
-        if turning == "S":
+        if turn == "S":
             speed_in_intersection = cfg.MAX_SPEED
         else:
             speed_in_intersection = cfg.TURN_SPEED
@@ -55,18 +57,23 @@ class Car:
 
         # ===== Information that might change during the simulation ============
         self.original_lane = lane   # The lane when the car joined the system
-        self.lane = lane
-        self.desired_lane = lane
+        self.lane = lane            # Current car lane
+        self.desired_lane = lane    # The lane that the car wants to change
         self.is_spillback = False
         self.is_spillback_strict = False
 
+
         out_sub_lane = (cfg.LANE_NUM_PER_DIRECTION-lane%cfg.LANE_NUM_PER_DIRECTION-1)
-        self.dst_lane_changed_to = int(self.out_dir*cfg.LANE_NUM_PER_DIRECTION + out_sub_lane)
-        if turning == 'R':
+        self.dst_lane = int(self.out_direction*cfg.LANE_NUM_PER_DIRECTION + out_sub_lane)     # Destination lane before next lane change
+        if next_turn == 'R':
             out_sub_lane = 0
-        elif turning == 'L':
+        elif next_turn == 'L':
             out_sub_lane = cfg.LANE_NUM_PER_DIRECTION-1
-        self.dst_lane = int(self.out_dir*cfg.LANE_NUM_PER_DIRECTION + out_sub_lane)
+        elif next_turn == 'S':
+            out_sub_lane = cfg.LANE_NUM_PER_DIRECTION//2
+
+        self.dst_lane_changed_to = int(self.out_direction*cfg.LANE_NUM_PER_DIRECTION + out_sub_lane)  # Destination lane after next lane change
+
 
 
         # Position: how far between it and the intersection (0 at the entry of intersection)

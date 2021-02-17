@@ -1,5 +1,6 @@
 LANE_NUM_PER_DIRECTION = 3
 
+global INTER_SIZE
 
 MAX_SPEED = 11.18    #25mph
 TURN_SPEED = 10.0    #25mph
