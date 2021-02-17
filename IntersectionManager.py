@@ -389,9 +389,12 @@ class IntersectionManager:
         #'''
         for car_id, car in self.car_list.items():
             lane_idx = car.dst_lane
-            #print(lane_idx)
+            lane_changed_to_idx = car.dst_lane_changed_to
+
             if self.others_road_info[lane_idx] != None:
                 accumulate_car_len_lane[lane_idx] += (car.length + cfg.HEADWAY)
+            if self.others_road_info[lane_changed_to_idx] != None:
+                accumulate_car_len_lane[lane_changed_to_idx] += (car.length + cfg.HEADWAY)
             if car.is_spillback == True:
                 spillback_lane_advise_avoid[lane_idx] = True
 
