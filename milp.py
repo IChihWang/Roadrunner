@@ -81,29 +81,44 @@ def IcaccPlus(old_cars, new_cars, advised_n_sched_car, pedestrian_time_mark_list
         dst_lane_idx = car.dst_lane
         dst_lane_changed_to_idx = car.dst_lane_changed_to
         lane_idx = car.lane
+
         if others_road_info[dst_lane_idx] != None:
             if car.position > head_of_line_blocking_position[lane_idx]:
                 new_cars.remove(car)    # Blocked by the car at the front
                 continue
 
+            dst_car_delay_position = others_road_info[dst_lane_idx]['car_delay_position']
             accumulate_car_len[dst_lane_idx] += (car.length + cfg.HEADWAY)
             spillback_delay_dst_lane = 0
 
             if accumulate_car_len[dst_lane_idx] > 0:
-                spillback_delay_multiply_factor = accumulate_car_len[dst_lane_idx]/(cfg.CCZ_LEN)
-                spillback_delay_dst_lane = recorded_delay[dst_lane_idx]*(spillback_delay_multiply_factor)
+                if len(dst_car_delay_position) == 0 or accumulate_car_len[dst_lane_idx] > dst_car_delay_position[-1]["position"]:
+                    car.is_spillback_strict = True
+                else:
+                    # Finde the position in the list to compare
+                    compare_dst_car_idx = -1
+                    for dst_car_idx in range(len(dst_car_delay_position)):
+                        if accumulate_car_len[dst_lane_idx] > dst_car_delay_position[dst_car_idx]["position"]:
+                            compare_dst_car_idx = dst_car_idx
+                            break
+
+                    back_delay = dst_car_delay_position[compare_dst_car_idx+1]["delay"]
+                    back_position = dst_car_delay_position[compare_dst_car_idx+1]["position"]
+                    spillback_delay_multiply_factor = back_delay/back_position
+                    spillback_delay_dst_lane = accumulate_car_len[dst_lane_idx]*spillback_delay_multiply_factor
+
+                #spillback_delay_multiply_factor = accumulate_car_len[dst_lane_idx]/(cfg.CCZ_LEN)
+                #spillback_delay_dst_lane = recorded_delay[dst_lane_idx]*(spillback_delay_multiply_factor)
 
                 car.is_spillback = True
-                if accumulate_car_len[dst_lane_idx] > 0:
-                    car.is_spillback_strict = True
 
                 spillback_delay_record[dst_lane_idx] = recorded_delay[dst_lane_idx]
             else:
                 spillback_delay_record[dst_lane_idx] = 0
-            
+
             spillback_delay = spillback_delay_dst_lane
 
-            
+
             if dst_lane_changed_to_idx != dst_lane_idx:
                 for_step = 0
                 if dst_lane_changed_to_idx > dst_lane_idx:
@@ -117,16 +132,28 @@ def IcaccPlus(old_cars, new_cars, advised_n_sched_car, pedestrian_time_mark_list
                     if other_lane_idx != dst_lane_idx:
                         accumulate_car_len[other_lane_idx] += (car.length + cfg.HEADWAY)
                         spillback_delay_dst_lane_changed_to = 0
+                        dst_car_delay_position = others_road_info[other_lane_idx]['car_delay_position']
 
                         if accumulate_car_len[other_lane_idx] > 0:
-                            spillback_delay_multiply_factor = accumulate_car_len[other_lane_idx]/(cfg.CCZ_LEN)
-                            spillback_delay_dst_lane_changed_to = recorded_delay[other_lane_idx]*(spillback_delay_multiply_factor)
-
-                            car.is_spillback = True
-                            if accumulate_car_len[other_lane_idx] > 0:
+                            if len(dst_car_delay_position) == 0 or accumulate_car_len[other_lane_idx] > dst_car_delay_position[-1]["position"]:
                                 car.is_spillback_strict = True
 
-                            spillback_delay_record[other_lane_idx] = recorded_delay[other_lane_idx]
+                            else:
+                                # Find the position in the list to compare
+                                compare_dst_car_idx = -1
+                                for dst_car_idx in range(len(dst_car_delay_position)):
+                                    if accumulate_car_len[other_lane_idx] > dst_car_delay_position[dst_car_idx]["position"]:
+                                        compare_dst_car_idx = dst_car_idx
+                                        break
+
+                                back_delay = dst_car_delay_position[compare_dst_car_idx+1]["delay"]
+                                back_position = dst_car_delay_position[compare_dst_car_idx+1]["position"]
+                                spillback_delay_multiply_factor = back_delay/back_position
+                                spillback_delay_dst_lane = accumulate_car_len[other_lane_idx]*spillback_delay_multiply_factor
+
+                                car.is_spillback = True
+
+                                spillback_delay_record[other_lane_idx] = recorded_delay[other_lane_idx]
                         else:
                             spillback_delay_record[other_lane_idx] = 0
 
@@ -147,7 +174,7 @@ def IcaccPlus(old_cars, new_cars, advised_n_sched_car, pedestrian_time_mark_list
                     add_blind_car_delay = (cfg.LANE_WIDTH*cfg.LANE_NUM_PER_DIRECTION*2) - (car.position/cfg.MAX_SPEED + min_d_add)
                     add_blind_car_delay = max(0, add_blind_car_delay)
                     min_d_add += add_blind_car_delay
-                    
+
 
                 if car.current_turn == 'S':
                     car.D = solver.NumVar(max(0+min_d_add, spillback_delay), solver.infinity(), 'd'+str(car.ID))
@@ -215,7 +242,7 @@ def IcaccPlus(old_cars, new_cars, advised_n_sched_car, pedestrian_time_mark_list
                         add_blind_car_delay = (cfg.LANE_WIDTH*cfg.LANE_NUM_PER_DIRECTION*2) - (car.position/cfg.MAX_SPEED + min_d_add)
                         add_blind_car_delay = max(0, add_blind_car_delay)
                         min_d_add += add_blind_car_delay
-                    
+
 
                     if car.current_turn == 'S':
                         car.D = solver.NumVar(max(0+min_d_add, spillback_delay), solver.infinity(), 'd'+str(car.ID))

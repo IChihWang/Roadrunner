@@ -1,0 +1,63 @@
+***Starting server on port 11652 ***
+Loading net-file from 'data/two_inter.net.xml' ... done (10ms).
+Loading done.
+Simulation started with time: 0.00
+Simulation ended at time: 3600.10
+Reason: TraCI requested termination.
+Performance: 
+ Duration: 15402.16s
+ Real time factor: 0.23374
+ UPS: 748.345183
+Vehicles: 
+ Inserted: 16033 (Loaded: 19383)
+ Running: 324
+ Waiting: 3350
+
+DijkstraRouter answered 2080 queries and explored 2.00 edges on average.
+DijkstraRouter spent 0.01s answering queries (0.00ms on average).
+DijkstraRouter answered 1390 queries and explored 3.00 edges on average.
+DijkstraRouter spent 0.01s answering queries (0.01ms on average).
+DijkstraRouter answered 1938 queries and explored 4.00 edges on average.
+DijkstraRouter spent 0.01s answering queries (0.00ms on average).
+DijkstraRouter answered 2184 queries and explored 2.00 edges on average.
+DijkstraRouter spent 0.01s answering queries (0.00ms on average).
+DijkstraRouter answered 2100 queries and explored 3.00 edges on average.
+DijkstraRouter spent 0.01s answering queries (0.00ms on average).
+DijkstraRouter answered 698 queries and explored 4.00 edges on average.
+DijkstraRouter spent 0.00s answering queries (0.00ms on average).
+DijkstraRouter answered 2096 queries and explored 2.00 edges on average.
+DijkstraRouter spent 0.01s answering queries (0.01ms on average).
+DijkstraRouter answered 1430 queries and explored 3.00 edges on average.
+DijkstraRouter spent 0.01s answering queries (0.00ms on average).
+DijkstraRouter answered 722 queries and explored 4.00 edges on average.
+DijkstraRouter spent 0.00s answering queries (0.00ms on average).
+DijkstraRouter answered 2154 queries and explored 2.00 edges on average.
+DijkstraRouter spent 0.01s answering queries (0.01ms on average).
+DijkstraRouter answered 2104 queries and explored 3.00 edges on average.
+DijkstraRouter spent 0.01s answering queries (0.01ms on average).
+DijkstraRouter answered 1334 queries and explored 4.00 edges on average.
+DijkstraRouter spent 0.00s answering queries (0.00ms on average).
+DijkstraRouter answered 2126 queries and explored 2.00 edges on average.
+DijkstraRouter spent 0.01s answering queries (0.00ms on average).
+DijkstraRouter answered 1344 queries and explored 3.00 edges on average.
+DijkstraRouter spent 0.01s answering queries (0.01ms on average).
+DijkstraRouter answered 696 queries and explored 3.99 edges on average.
+DijkstraRouter spent 0.00s answering queries (0.00ms on average).
+DijkstraRouter answered 2112 queries and explored 2.00 edges on average.
+DijkstraRouter spent 0.01s answering queries (0.00ms on average).
+DijkstraRouter answered 2096 queries and explored 3.00 edges on average.
+DijkstraRouter spent 0.01s answering queries (0.01ms on average).
+DijkstraRouter answered 1334 queries and explored 4.00 edges on average.
+DijkstraRouter spent 0.01s answering queries (0.00ms on average).
+DijkstraRouter answered 2118 queries and explored 2.00 edges on average.
+DijkstraRouter spent 0.01s answering queries (0.00ms on average).
+DijkstraRouter answered 1470 queries and explored 3.00 edges on average.
+DijkstraRouter spent 0.00s answering queries (0.00ms on average).
+DijkstraRouter answered 1908 queries and explored 4.00 edges on average.
+DijkstraRouter spent 0.01s answering queries (0.01ms on average).
+DijkstraRouter answered 2158 queries and explored 2.00 edges on average.
+DijkstraRouter spent 0.01s answering queries (0.00ms on average).
+DijkstraRouter answered 2142 queries and explored 3.00 edges on average.
+DijkstraRouter spent 0.01s answering queries (0.01ms on average).
+DijkstraRouter answered 746 queries and explored 4.00 edges on average.
+DijkstraRouter spent 0.00s answering queries (0.00ms on average).

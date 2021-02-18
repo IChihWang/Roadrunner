@@ -275,6 +275,8 @@ class IntersectionManager:
                         advised_n_sched_car.append(car)
 
                     if car.is_spillback == True:
+                        traci.vehicle.setColor(car_id, (255,153,51))
+                    elif car.is_spillback_strict == True:
                         traci.vehicle.setColor(car_id, (255,59,59))
 
 
@@ -454,6 +456,7 @@ class IntersectionManager:
         car_accumulate_len_lane = [0]*(cfg.LANE_NUM_PER_DIRECTION*4)
         delay_lane = [0]*(cfg.LANE_NUM_PER_DIRECTION*4)
         car_position_with_delay_lane = [0]*(cfg.LANE_NUM_PER_DIRECTION*4)
+        lane_car_delay_position = [[] for i in range(cfg.LANE_NUM_PER_DIRECTION*4)]
         for car_id, car in self.car_list.items():
             lane = car.lane
             car_accumulate_len_lane[lane] += car.length + cfg.HEADWAY
@@ -467,11 +470,17 @@ class IntersectionManager:
                 #delay_lane[lane] = (car.OT+car.D)-(car.position/cfg.MAX_SPEED)
                 delay_lane[lane] = car.D
 
+            if isinstance(car.D, float):
+                lane_car_delay_position[lane].append({"position":car.position + car.length + cfg.HEADWAY, "delay":car.D})
+
+
         for lane_idx in range(4*cfg.LANE_NUM_PER_DIRECTION):
             self.my_road_info[lane_idx]['avail_len'] = cfg.TOTAL_LEN - car_accumulate_len_lane[lane_idx]
             self.my_road_info[lane_idx]['delay'] = delay_lane[lane_idx]
             self.my_road_info[lane_idx]['simu_step'] = simu_step
-        #print(self.ID, self.others_road_info)
+            lane_car_delay_position[lane_idx] = sorted(lane_car_delay_position[lane_idx], key=lambda x: x["position"])
+            self.my_road_info[lane_idx]['car_delay_position'] = lane_car_delay_position[lane_idx]
+
 
     # Compute teh max AT for pedestrian time
     def get_max_AT_direction(self, sched_car, is_pedestrian_list, pedestrian_time_mark_list):
