@@ -25,7 +25,7 @@ def generate_routefile_with_src_dst(inter_size, arrival_rate, rand_seed, time_st
     print("<routes>\n", file=routes)
 
     for i in range(5,10):
-        vType_str = '\t<vType id="car%i" accel="100.0" decel="100.0" sigma="0.0" length="%i" minGap="%f" maxSpeed="%f" tau="%f" carFollowModel="CACC" color="255,255,255"/>' % (i, i, cfg.HEADWAY, cfg.MAX_SPEED, cfg.TIME_STEP);
+        vType_str = '\t<vType id="car%i" accel="200.0" decel="200.0" sigma="0.0" length="%i" minGap="%f" maxSpeed="%f" tau="%f" carFollowModel="CACC" color="255,255,255"/>' % (i, i, cfg.HEADWAY, cfg.MAX_SPEED, cfg.TIME_STEP);
 
         print(vType_str, file=routes)
 
@@ -128,7 +128,7 @@ def generate_routefile_with_src_dst_event(inter_size, arrival_rate, rand_seed, t
     print("<routes>\n", file=routes)
 
     for i in range(5,10):
-        vType_str = '\t<vType id="car%i" accel="100.0" decel="100.0" sigma="0.0" length="%i" minGap="%f" maxSpeed="%f" tau="%f" carFollowModel="CACC" color="255,255,255"/>' % (i, i, cfg.HEADWAY, cfg.MAX_SPEED, cfg.TIME_STEP);
+        vType_str = '\t<vType id="car%i" accel="200.0" decel="200.0" sigma="0.0" length="%i" minGap="%f" maxSpeed="%f" tau="%f" carFollowModel="CACC" color="255,255,255"/>' % (i, i, cfg.HEADWAY, cfg.MAX_SPEED, cfg.TIME_STEP);
 
         print(vType_str, file=routes)
 
@@ -241,7 +241,7 @@ def generate_routefile(arrival_rate):
         print("<routes>\n", file=routes)
 
         for i in range(5,10):
-            vType_str = '\t<vType id="car%i" accel="100.0" decel="100.0" sigma="0.0" length="%i" minGap="%f" maxSpeed="%f" tau="%f" carFollowModel="CACC" color="255,255,255"/>' % (i, i, cfg.HEADWAY, cfg.MAX_SPEED, cfg.TIME_STEP);
+            vType_str = '\t<vType id="car%i" accel="200.0" decel="200.0" sigma="0.0" length="%i" minGap="%f" maxSpeed="%f" tau="%f" carFollowModel="CACC" color="255,255,255"/>' % (i, i, cfg.HEADWAY, cfg.MAX_SPEED, cfg.TIME_STEP);
 
             print(vType_str, file=routes)
 

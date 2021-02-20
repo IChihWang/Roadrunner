@@ -86,6 +86,11 @@ def run():
 
                 #raw_input()
             #'''
+            '''
+            if (simu_step*10)//1/10.0 == 105:
+                print("check RR_311 RS_317  ?   (If not work, change back to max)")
+                input('Enter enter:')
+            #'''
 
             '''
             if simu_step > 1534:
@@ -107,7 +112,7 @@ def run():
                 # Dummy: Generate routes (turnings)
                 if not car_id in car_info:
                     car_info[car_id] = dict()
-                    car_info[car_id]["route"] = [car_id[0], car_id[1]]
+                    car_info[car_id]["route"] = [car_id[0], car_id[1], "X", "X"]
 
 
                 is_handled = False
@@ -121,20 +126,22 @@ def run():
                         is_handled = True
                         car_info[car_id]["inter_status"] = "On my lane"
 
-                        break
                     elif (intersection_manager.check_in_my_region(lane_id) == "In my intersection"):
 
                         # Check if the car enter the intersection (by changing state from "On my lane" to "in intersection")
+
                         if (car_info[car_id]["inter_status"] == "On my lane"):
                             car_info[car_id]["route"].pop(0)
-
                         current_turn = car_info[car_id]["route"][0]
                         next_turn = car_info[car_id]["route"][1]
 
                         intersection_manager.update_car(car_id, lane_id, simu_step, current_turn, next_turn)
                         is_handled = True
                         car_info[car_id]["inter_status"] = "In my intersection"
-                        break
+
+                    else:   # The intersection doesn't have the car
+                        intersection_manager.delete_car(car_id)
+
                 if not is_handled:
                     # Leaving intersections
                     traci.vehicle.setSpeed(car_id, cfg.MAX_SPEED)
@@ -232,7 +239,7 @@ if __name__ == "__main__":
     random.seed(seed)  # make tests reproducible
     numpy.random.seed(seed)
 
-    sumoBinary = checkBinary('sumo-gui')
+    sumoBinary = checkBinary('sumo')
 
     # 0. Generate the intersection information files
     os.system("bash gen_intersection/gen_data.sh " + str(cfg.LANE_NUM_PER_DIRECTION))

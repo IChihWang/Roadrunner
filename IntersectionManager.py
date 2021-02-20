@@ -18,7 +18,6 @@ class IntersectionManager:
         self.ID = id
         self.az_list = dict()
         self.pz_list = dict()
-        self.ccz_list = dict()
 
         self.car_list = dict()   # Cars that needs to be handled
         self.cc_list = dict()    # Cars under Cruse Control in CCZ
@@ -80,7 +79,7 @@ class IntersectionManager:
         else:
             lane_data = lane_id.split("_")
             lane_id_short = lane_data[0] + "_" + lane_data[1]
-            if lane_id_short == self.ID:
+            if lane_id_short == ":" + self.ID:
                 return "In my intersection"
             else:
                 return "Not me"
@@ -119,7 +118,11 @@ class IntersectionManager:
         traci.vehicle.setMaxSpeed(car_id, cfg.MAX_SPEED)
         traci.vehicle.setColor(car_id, (255,255,255))
 
+    def delete_car(self, car_id):
+        if car_id in self.car_list:
+            self.car_list.pop(car_id)
     def update_car(self, car_id, lane_id, simu_step, car_turn, next_turn):
+
         if lane_id in self.in_lanes:
             lane_data = lane_id.split("_")
             lane_direction = int(lane_data[2])
@@ -138,6 +141,7 @@ class IntersectionManager:
                 new_car.Enter_T = simu_step - (traci.vehicle.getLanePosition(car_id))/cfg.MAX_SPEED
                 self.car_list[car_id] = new_car
 
+                traci.vehicle.setMaxSpeed(car_id, cfg.MAX_SPEED)
                 traci.vehicle.setSpeed(car_id, cfg.MAX_SPEED)
 
                 self.update_path(car_id, car_turn, lane_direction)
@@ -170,6 +174,10 @@ class IntersectionManager:
 
             self.car_list[car_id].lane = lane
 
+
+
+
+
     def run(self, simu_step):
 
         # ===== Update the time OT =====
@@ -183,13 +191,10 @@ class IntersectionManager:
 
 
         # ===== Entering the intersection (Record the cars) =====
-        to_be_deleted = []
         for car_id, car in self.car_list.items():
             lane_id = traci.vehicle.getLaneID(car_id)
             if lane_id not in self.in_lanes:
                 traci.vehicle.setSpeed(car_id, car.speed_in_intersection)
-
-                to_be_deleted.append(car_id)
 
                 #  self.leaving_cars[car_id] = self.car_list[car_id]
                 self.car_list[car_id].Leave_T = simu_step
@@ -199,9 +204,7 @@ class IntersectionManager:
                 self.total_delays_by_sche += car.D
                 self.car_num += 1
 
-                car.zone == "Intersection"
-
-                if car.D+car.OT <= -0.3 or car.D+car.OT >= 0.3:
+                if car.zone != "Intersection" and car.D+car.OT <= -0.3 or car.D+car.OT >= 0.3:
                     print("DEBUG: Car didn't arrive at the intersection at right time.")
 
                     print("ID", car.ID)
@@ -213,9 +216,8 @@ class IntersectionManager:
                     print("OT", car.OT)
                     print("=======")
                     print("-----------------")
-        for car_id in to_be_deleted:
-            del self.ccz_list[car_id]
-            self.car_list.pop(car_id)
+
+                car.zone = "Intersection"
 
 
         '''
@@ -233,13 +235,11 @@ class IntersectionManager:
         for car_id, car in self.pz_list.items():
             if car.position <= cfg.CCZ_LEN and isinstance(car.D, float):
 
-                self.ccz_list[car_id] = car
                 to_be_deleted.append(car_id)
 
                 if (car.CC_state == "Preseting_done"):
                     car.CC_state = "CruiseControl_ready"
             elif car.position <= cfg.CCZ_LEN:
-                self.ccz_list[car_id] = car
                 to_be_deleted.append(car_id)
 
                 if (car.CC_state == None) or (not ("Platoon" in car.CC_state or "Entering" in car.CC_state)):
@@ -370,7 +370,6 @@ class IntersectionManager:
         # Start to let cars control itself once it enters the CCZ
         # Each car perform their own Cruise Control behavior
         #ccontrol_list = self.pz_list.copy()
-        #ccontrol_list.update(self.ccz_list)
         #sorted_ccontrol_list = sorted(ccontrol_list.items(), key=lambda x: x[1].position)
         sorted_ccontrol_list = sorted(self.car_list.items(), key=lambda x: x[1].position)
         # SUPER IMPORTANT: sorted to ensure the following car speed
@@ -411,7 +410,7 @@ class IntersectionManager:
             if car.zone == "AZ" and car.zone_state == "AZ_not_advised":
                 self.az_list[car_id] = car
 
-                traci.vehicle.setMinGap(car_id, cfg.HEADWAY)
+                traci.vehicle.setMinGap(car_id, 3)
                 #traci.vehicle.setLaneChangeMode(car_id, 256)
                 traci.vehicle.setLaneChangeMode(car_id, 784)
                 #traci.vehicle.setLaneChangeMode(car_id, 528)
@@ -457,12 +456,18 @@ class IntersectionManager:
         delay_lane = [0]*(cfg.LANE_NUM_PER_DIRECTION*4)
         car_position_with_delay_lane = [0]*(cfg.LANE_NUM_PER_DIRECTION*4)
         lane_car_delay_position = [[] for i in range(cfg.LANE_NUM_PER_DIRECTION*4)]
-        for car_id, car in self.car_list.items():
+
+        car_list_sorted = sorted(self.car_list.values(), key=lambda x: x.position)
+        for car in car_list_sorted:
             lane = car.lane
             car_accumulate_len_lane[lane] += car.length + cfg.HEADWAY
+            if isinstance(car.D, float):
+                lane_car_delay_position[lane].append({"position":car_accumulate_len_lane[lane], "delay":car.D})
 
             if car.position > cfg.TOTAL_LEN - cfg.AZ_LEN and lane != car.desired_lane:
                 car_accumulate_len_lane[car.desired_lane] += car.length + cfg.HEADWAY
+                if isinstance(car.D, float):
+                    lane_car_delay_position[car.desired_lane].append({"position":car_accumulate_len_lane[car.desired_lane], "delay":car.D})
 
 
             if car.position > car_position_with_delay_lane[lane] and isinstance(car.D, float):
@@ -470,15 +475,11 @@ class IntersectionManager:
                 #delay_lane[lane] = (car.OT+car.D)-(car.position/cfg.MAX_SPEED)
                 delay_lane[lane] = car.D
 
-            if isinstance(car.D, float):
-                lane_car_delay_position[lane].append({"position":car.position + car.length + cfg.HEADWAY, "delay":car.D})
-
 
         for lane_idx in range(4*cfg.LANE_NUM_PER_DIRECTION):
             self.my_road_info[lane_idx]['avail_len'] = cfg.TOTAL_LEN - car_accumulate_len_lane[lane_idx]
             self.my_road_info[lane_idx]['delay'] = delay_lane[lane_idx]
             self.my_road_info[lane_idx]['simu_step'] = simu_step
-            lane_car_delay_position[lane_idx] = sorted(lane_car_delay_position[lane_idx], key=lambda x: x["position"])
             self.my_road_info[lane_idx]['car_delay_position'] = lane_car_delay_position[lane_idx]
 
 

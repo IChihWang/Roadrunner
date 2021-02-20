@@ -127,11 +127,12 @@ class Car:
         leader_tuple = traci.vehicle.getLeader(self.ID)
 
 
+
         if leader_tuple != None:
             if leader_tuple[0] in car_list.keys():
                 front_car_ID = leader_tuple[0]
                 front_car = car_list[front_car_ID]
-                front_distance = leader_tuple[1]
+                front_distance = leader_tuple[1] + 3    # Because SUMO measre the distance with a given Gap
 
                 if self.CC_front_pos_diff == 0:
                     self.CC_front_pos_diff = self.position - front_car.position
@@ -139,6 +140,7 @@ class Car:
 
         self.CC_front_car = front_car
         front_speed = self.CC_get_front_speed()
+
 
         # 1. Detect if the front car is too close
         if (self.CC_state == None) or (not ("Platoon" in self.CC_state or "Entering" in self.CC_state)):
@@ -230,6 +232,7 @@ class Car:
             self.CC_state = "Entering_intersection"
             traci.vehicle.setSpeed(self.ID, self.speed_in_intersection)
 
+
         elif (self.CC_state == "Platoon_catchup"):
             if front_car == None:
                 my_speed = traci.vehicle.getSpeed(self.ID)
@@ -239,17 +242,22 @@ class Car:
                     self.CC_state = "Keep_Max_speed"
             else:
                 my_speed = traci.vehicle.getSpeed(self.ID)
-                min_catch_up_time = (my_speed-front_speed)/cfg.MAX_ACC
-                min_distance = (my_speed-front_speed)*min_catch_up_time
+                min_catch_up_time = (my_speed-0)/cfg.MAX_ACC
+                min_distance = (my_speed-0)*min_catch_up_time
 
                 if front_distance < min_distance:
                     target_speed = max(front_speed, my_speed - cfg.MAX_ACC*cfg.TIME_STEP)
 
-                    if front_speed == target_speed and front_distance <= cfg.HEADWAY:
+                    if front_distance <= cfg.HEADWAY:
                         self.CC_state = "Platoon_following"
                         traci.vehicle.setSpeed(self.ID, front_speed)
                     else:
-                        traci.vehicle.setSpeed(self.ID, target_speed)
+                        if front_speed > target_speed:
+                            target_speed = min(cfg.MAX_SPEED, my_speed + cfg.MAX_ACC*cfg.TIME_STEP)
+                            traci.vehicle.setSpeed(self.ID, target_speed)
+                        else:
+                            target_speed = max(front_speed + cfg.MAX_ACC*cfg.TIME_STEP, my_speed - cfg.MAX_ACC*cfg.TIME_STEP)
+                            traci.vehicle.setSpeed(self.ID, target_speed)
                 else:
                     target_speed = min(cfg.MAX_SPEED, my_speed + cfg.MAX_ACC*cfg.TIME_STEP)
                     traci.vehicle.setSpeed(self.ID, target_speed)
