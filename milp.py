@@ -68,7 +68,7 @@ def IcaccPlus(old_cars, new_cars, advised_n_sched_car, pedestrian_time_mark_list
     max_dst_lane_idx_list = [[-999999, -1] for i in range(4)]
     for dst_lane_idx in range(len(others_road_info)):
         if others_road_info[dst_lane_idx] != None:
-            accumulate_car_len[dst_lane_idx] = accumulate_car_len_lane[dst_lane_idx]-others_road_info[dst_lane_idx]['avail_len'] + cfg.CAR_MAX_LEN + cfg.HEADWAY+(cfg.CCZ_DEC2_LEN+cfg.CCZ_ACC_LEN)+(cfg.CCZ_DEC2_LEN+cfg.CCZ_ACC_LEN) # Deceleration & waiting distance
+            accumulate_car_len[dst_lane_idx] = accumulate_car_len_lane[dst_lane_idx]-others_road_info[dst_lane_idx]['avail_len'] + cfg.CCZ_ACC_LEN
             recorded_delay[dst_lane_idx] = max(others_road_info[dst_lane_idx]['delay'], spillback_delay_record[dst_lane_idx]) # To record the dispatch speed
             base_delay[dst_lane_idx] = recorded_delay
 
@@ -92,7 +92,7 @@ def IcaccPlus(old_cars, new_cars, advised_n_sched_car, pedestrian_time_mark_list
             spillback_delay_dst_lane = 0
 
             if accumulate_car_len[dst_lane_idx] > 0:
-                if len(dst_car_delay_position) == 0 or accumulate_car_len[dst_lane_idx]+(cfg.CAR_MAX_LEN+cfg.HEADWAY) > dst_car_delay_position[-1]["position"]:
+                if len(dst_car_delay_position) < 1 or accumulate_car_len[dst_lane_idx]+(cfg.CAR_MAX_LEN+cfg.HEADWAY) > dst_car_delay_position[-1]["position"]:
                     car.is_spillback_strict = True
                 else:
                     # Finde the position in the list to compare
@@ -135,7 +135,7 @@ def IcaccPlus(old_cars, new_cars, advised_n_sched_car, pedestrian_time_mark_list
                         dst_car_delay_position = others_road_info[other_lane_idx]['car_delay_position']
 
                         if accumulate_car_len[other_lane_idx] > 0:
-                            if len(dst_car_delay_position) == 0 or accumulate_car_len[other_lane_idx]+(cfg.CAR_MAX_LEN+cfg.HEADWAY) > dst_car_delay_position[-1]["position"]:
+                            if len(dst_car_delay_position) < 1 or accumulate_car_len[other_lane_idx]+(cfg.CAR_MAX_LEN+cfg.HEADWAY) > dst_car_delay_position[-1]["position"]:
                                 car.is_spillback_strict = True
 
                             else:
