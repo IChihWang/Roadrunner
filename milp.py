@@ -18,9 +18,6 @@ def IcaccPlus(old_cars, new_cars, advised_n_sched_car, pedestrian_time_mark_list
         OT = new_cars[c_idx].position/cfg.MAX_SPEED
         new_cars[c_idx].OT = OT + cfg.SUMO_TIME_ERR
 
-    car_idd = [car.ID for car in new_cars]
-    if "RL_556" in car_idd or "RS_568" in car_idd or "RR_579" in car_idd or "RR_601" in car_idd:
-        print(car_idd)
 
 
     # part 2: build the solver
@@ -68,7 +65,7 @@ def IcaccPlus(old_cars, new_cars, advised_n_sched_car, pedestrian_time_mark_list
     max_dst_lane_idx_list = [[-999999, -1] for i in range(4)]
     for dst_lane_idx in range(len(others_road_info)):
         if others_road_info[dst_lane_idx] != None:
-            accumulate_car_len[dst_lane_idx] = accumulate_car_len_lane[dst_lane_idx]-others_road_info[dst_lane_idx]['avail_len'] + cfg.CCZ_ACC_LEN
+            accumulate_car_len[dst_lane_idx] = accumulate_car_len_lane[dst_lane_idx]-others_road_info[dst_lane_idx]['avail_len'] + cfg.CAR_MAX_LEN + cfg.HEADWAY + cfg.CCZ_ACC_LEN
             recorded_delay[dst_lane_idx] = max(others_road_info[dst_lane_idx]['delay'], spillback_delay_record[dst_lane_idx]) # To record the dispatch speed
             base_delay[dst_lane_idx] = recorded_delay
 
@@ -98,17 +95,21 @@ def IcaccPlus(old_cars, new_cars, advised_n_sched_car, pedestrian_time_mark_list
                     # Finde the position in the list to compare
                     compare_dst_car_idx = -1
                     for dst_car_idx in range(len(dst_car_delay_position)):
-                        if accumulate_car_len[dst_lane_idx] > dst_car_delay_position[dst_car_idx]["position"]:
+                        if accumulate_car_len[dst_lane_idx] < dst_car_delay_position[dst_car_idx]["position"]:
                             compare_dst_car_idx = dst_car_idx
                             break
 
-                    back_delay = dst_car_delay_position[compare_dst_car_idx+1]["delay"]
-                    back_position = dst_car_delay_position[compare_dst_car_idx+1]["position"]
+                    back_delay = dst_car_delay_position[compare_dst_car_idx]["delay"]
+                    back_position = dst_car_delay_position[compare_dst_car_idx]["position"]
                     spillback_delay_multiply_factor = back_delay/back_position
                     spillback_delay_dst_lane = accumulate_car_len[dst_lane_idx]*spillback_delay_multiply_factor
+                    #print(dst_car_delay_position)
+                    #print(compare_dst_car_idx)
+                    #print(dst_car_delay_position[compare_dst_car_idx-1]["position"], back_position, accumulate_car_len[dst_lane_idx])
+                    #spillback_delay_dst_lane = back_delay
 
-                #spillback_delay_multiply_factor = accumulate_car_len[dst_lane_idx]/(cfg.CCZ_LEN)
-                #spillback_delay_dst_lane = recorded_delay[dst_lane_idx]*(spillback_delay_multiply_factor)
+                    #spillback_delay_multiply_factor = accumulate_car_len[dst_lane_idx]/(cfg.CCZ_LEN)
+                    #spillback_delay_dst_lane = recorded_delay[dst_lane_idx]*(spillback_delay_multiply_factor)
 
                 car.is_spillback = True
 
@@ -142,18 +143,22 @@ def IcaccPlus(old_cars, new_cars, advised_n_sched_car, pedestrian_time_mark_list
                                 # Find the position in the list to compare
                                 compare_dst_car_idx = -1
                                 for dst_car_idx in range(len(dst_car_delay_position)):
-                                    if accumulate_car_len[other_lane_idx] > dst_car_delay_position[dst_car_idx]["position"]:
+                                    if accumulate_car_len[other_lane_idx] < dst_car_delay_position[dst_car_idx]["position"]:
                                         compare_dst_car_idx = dst_car_idx
                                         break
 
-                                back_delay = dst_car_delay_position[compare_dst_car_idx+1]["delay"]
-                                back_position = dst_car_delay_position[compare_dst_car_idx+1]["position"]
+                                back_delay = dst_car_delay_position[compare_dst_car_idx]["delay"]
+                                back_position = dst_car_delay_position[compare_dst_car_idx]["position"]
                                 spillback_delay_multiply_factor = back_delay/back_position
                                 spillback_delay_dst_lane = accumulate_car_len[other_lane_idx]*spillback_delay_multiply_factor
+                                #print(dst_car_delay_position)
+                                #print(compare_dst_car_idx)
+                                #print(dst_car_delay_position[compare_dst_car_idx-1]["position"], back_position, accumulate_car_len[other_lane_idx])
+                                #spillback_delay_dst_lane = back_delay
 
-                                car.is_spillback = True
+                            car.is_spillback = True
 
-                                spillback_delay_record[other_lane_idx] = recorded_delay[other_lane_idx]
+                            spillback_delay_record[other_lane_idx] = recorded_delay[other_lane_idx]
                         else:
                             spillback_delay_record[other_lane_idx] = 0
 

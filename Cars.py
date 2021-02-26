@@ -141,7 +141,6 @@ class Car:
         self.CC_front_car = front_car
         front_speed = self.CC_get_front_speed()
 
-
         # 1. Detect if the front car is too close
         if (self.CC_state == None) or (not ("Platoon" in self.CC_state or "Entering" in self.CC_state)):
             if front_car != None:
@@ -446,7 +445,7 @@ class Car:
 
 
         # Determine if there's stop and go
-        if speed == 0:
+        if speed < 1:
             self.CC_is_stop_n_go = True
 
 

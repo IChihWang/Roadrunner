@@ -452,7 +452,7 @@ class IntersectionManager:
 
         ##########################################
         # Update the road info after actions
-        car_accumulate_len_lane = [(cfg.CCZ_DEC2_LEN+cfg.CCZ_ACC_LEN)+ cfg.CAR_MAX_LEN+ cfg.HEADWAY]*(cfg.LANE_NUM_PER_DIRECTION*4)
+        car_accumulate_len_lane = [(cfg.CCZ_DEC2_LEN+cfg.CCZ_ACC_LEN)]*(cfg.LANE_NUM_PER_DIRECTION*4)
         delay_lane = [0]*(cfg.LANE_NUM_PER_DIRECTION*4)
         car_position_with_delay_lane = [0]*(cfg.LANE_NUM_PER_DIRECTION*4)
         lane_car_delay_position = [[] for i in range(cfg.LANE_NUM_PER_DIRECTION*4)]
@@ -474,7 +474,7 @@ class IntersectionManager:
 
 
         for lane_idx in range(4*cfg.LANE_NUM_PER_DIRECTION):
-            self.my_road_info[lane_idx]['avail_len'] = cfg.TOTAL_LEN - car_accumulate_len_lane[lane_idx]
+            self.my_road_info[lane_idx]['avail_len'] = cfg.TOTAL_LEN - car_accumulate_len_lane[lane_idx] - cfg.HEADWAY
             self.my_road_info[lane_idx]['delay'] = delay_lane[lane_idx]
             self.my_road_info[lane_idx]['simu_step'] = simu_step
             self.my_road_info[lane_idx]['car_delay_position'] = lane_car_delay_position[lane_idx]

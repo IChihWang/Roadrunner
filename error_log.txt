@@ -1,54 +1,62 @@
-***Starting server on port 7346 ***
-Loading net-file from 'data/two_inter.net.xml' ... done (12ms).
+***Starting server on port 14957 ***
+Loading net-file from 'data/two_inter.net.xml' ... done (37ms).
 Loading done.
-Simulation version 1.8.0 started with time: 0.00
-Error: tcpip::Socket::recvAndCheck @ recv: Socket reset by peer
-Quitting (on error).
-DijkstraRouter answered 588 queries and explored 2.00 edges on average.
+Simulation started with time: 0.00
+Simulation ended at time: 63.00
+Performance: 
+ Duration: 73.35s
+ Real time factor: 0.858907
+ UPS: 1122.033020
+Vehicles: 
+ Inserted: 293 (Loaded: 978)
+ Running: 226
+ Waiting: 1
+
+DijkstraRouter answered 28 queries and explored 2.00 edges on average.
 DijkstraRouter spent 0.00s answering queries (0.00ms on average).
-DijkstraRouter answered 544 queries and explored 3.00 edges on average.
+DijkstraRouter answered 28 queries and explored 3.00 edges on average.
 DijkstraRouter spent 0.00s answering queries (0.00ms on average).
-DijkstraRouter answered 534 queries and explored 4.00 edges on average.
-DijkstraRouter spent 0.00s answering queries (0.01ms on average).
-DijkstraRouter answered 602 queries and explored 2.00 edges on average.
+DijkstraRouter answered 30 queries and explored 4.00 edges on average.
 DijkstraRouter spent 0.00s answering queries (0.00ms on average).
-DijkstraRouter answered 544 queries and explored 3.00 edges on average.
+DijkstraRouter answered 28 queries and explored 2.00 edges on average.
 DijkstraRouter spent 0.00s answering queries (0.00ms on average).
-DijkstraRouter answered 340 queries and explored 4.00 edges on average.
+DijkstraRouter answered 40 queries and explored 3.00 edges on average.
 DijkstraRouter spent 0.00s answering queries (0.00ms on average).
-DijkstraRouter answered 522 queries and explored 2.91 edges on average.
-DijkstraRouter spent 0.00s answering queries (0.01ms on average).
-DijkstraRouter answered 484 queries and explored 2.92 edges on average.
+DijkstraRouter answered 40 queries and explored 4.00 edges on average.
 DijkstraRouter spent 0.00s answering queries (0.00ms on average).
-DijkstraRouter answered 392 queries and explored 2.96 edges on average.
+DijkstraRouter answered 18 queries and explored 3.22 edges on average.
 DijkstraRouter spent 0.00s answering queries (0.00ms on average).
-DijkstraRouter answered 556 queries and explored 2.00 edges on average.
+DijkstraRouter answered 4 queries and explored 3.00 edges on average.
 DijkstraRouter spent 0.00s answering queries (0.00ms on average).
-DijkstraRouter answered 558 queries and explored 3.00 edges on average.
+DijkstraRouter answered 18 queries and explored 3.11 edges on average.
 DijkstraRouter spent 0.00s answering queries (0.00ms on average).
-DijkstraRouter answered 634 queries and explored 4.00 edges on average.
-DijkstraRouter spent 0.01s answering queries (0.01ms on average).
-DijkstraRouter answered 530 queries and explored 2.97 edges on average.
+DijkstraRouter answered 40 queries and explored 2.00 edges on average.
 DijkstraRouter spent 0.00s answering queries (0.00ms on average).
-DijkstraRouter answered 492 queries and explored 3.01 edges on average.
+DijkstraRouter answered 22 queries and explored 3.00 edges on average.
 DijkstraRouter spent 0.00s answering queries (0.00ms on average).
-DijkstraRouter answered 336 queries and explored 3.05 edges on average.
-DijkstraRouter spent 0.00s answering queries (0.01ms on average).
-DijkstraRouter answered 530 queries and explored 2.00 edges on average.
+DijkstraRouter answered 28 queries and explored 4.00 edges on average.
 DijkstraRouter spent 0.00s answering queries (0.00ms on average).
-DijkstraRouter answered 572 queries and explored 3.00 edges on average.
-DijkstraRouter spent 0.01s answering queries (0.01ms on average).
-DijkstraRouter answered 570 queries and explored 4.00 edges on average.
-DijkstraRouter spent 0.00s answering queries (0.01ms on average).
-DijkstraRouter answered 566 queries and explored 2.00 edges on average.
+DijkstraRouter answered 24 queries and explored 3.25 edges on average.
 DijkstraRouter spent 0.00s answering queries (0.00ms on average).
-DijkstraRouter answered 548 queries and explored 3.00 edges on average.
-DijkstraRouter spent 0.00s answering queries (0.01ms on average).
-DijkstraRouter answered 578 queries and explored 4.00 edges on average.
-DijkstraRouter spent 0.00s answering queries (0.01ms on average).
-DijkstraRouter answered 612 queries and explored 2.00 edges on average.
+DijkstraRouter answered 12 queries and explored 2.83 edges on average.
 DijkstraRouter spent 0.00s answering queries (0.00ms on average).
-DijkstraRouter answered 598 queries and explored 3.00 edges on average.
-DijkstraRouter spent 0.00s answering queries (0.01ms on average).
-DijkstraRouter answered 400 queries and explored 4.00 edges on average.
+DijkstraRouter answered 20 queries and explored 3.10 edges on average.
+DijkstraRouter spent 0.00s answering queries (0.00ms on average).
+DijkstraRouter answered 40 queries and explored 2.00 edges on average.
+DijkstraRouter spent 0.00s answering queries (0.00ms on average).
+DijkstraRouter answered 36 queries and explored 3.00 edges on average.
+DijkstraRouter spent 0.00s answering queries (0.00ms on average).
+DijkstraRouter answered 24 queries and explored 4.00 edges on average.
+DijkstraRouter spent 0.00s answering queries (0.00ms on average).
+DijkstraRouter answered 42 queries and explored 2.00 edges on average.
+DijkstraRouter spent 0.00s answering queries (0.00ms on average).
+DijkstraRouter answered 26 queries and explored 3.00 edges on average.
+DijkstraRouter spent 0.00s answering queries (0.00ms on average).
+DijkstraRouter answered 28 queries and explored 4.00 edges on average.
+DijkstraRouter spent 0.00s answering queries (0.00ms on average).
+DijkstraRouter answered 32 queries and explored 2.00 edges on average.
+DijkstraRouter spent 0.00s answering queries (0.00ms on average).
+DijkstraRouter answered 36 queries and explored 3.00 edges on average.
+DijkstraRouter spent 0.00s answering queries (0.00ms on average).
+DijkstraRouter answered 38 queries and explored 4.00 edges on average.
 DijkstraRouter spent 0.00s answering queries (0.00ms on average).
