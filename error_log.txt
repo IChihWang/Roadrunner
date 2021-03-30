@@ -1,62 +1,62 @@
-***Starting server on port 14957 ***
-Loading net-file from 'data/two_inter.net.xml' ... done (37ms).
+***Starting server on port 3550 ***
+Loading net-file from 'data/two_inter.net.xml' ... done (9ms).
 Loading done.
 Simulation started with time: 0.00
-Simulation ended at time: 63.00
+Simulation ended at time: 118.00
 Performance: 
- Duration: 73.35s
- Real time factor: 0.858907
- UPS: 1122.033020
+ Duration: 147.83s
+ Real time factor: 0.798203
+ UPS: 1796.559608
 Vehicles: 
- Inserted: 293 (Loaded: 978)
- Running: 226
- Waiting: 1
+ Inserted: 606 (Loaded: 1097)
+ Running: 322
+ Waiting: 38
 
-DijkstraRouter answered 28 queries and explored 2.00 edges on average.
+DijkstraRouter answered 66 queries and explored 2.00 edges on average.
 DijkstraRouter spent 0.00s answering queries (0.00ms on average).
-DijkstraRouter answered 28 queries and explored 3.00 edges on average.
+DijkstraRouter answered 64 queries and explored 3.00 edges on average.
 DijkstraRouter spent 0.00s answering queries (0.00ms on average).
-DijkstraRouter answered 30 queries and explored 4.00 edges on average.
+DijkstraRouter answered 78 queries and explored 4.00 edges on average.
 DijkstraRouter spent 0.00s answering queries (0.00ms on average).
-DijkstraRouter answered 28 queries and explored 2.00 edges on average.
+DijkstraRouter answered 58 queries and explored 2.00 edges on average.
 DijkstraRouter spent 0.00s answering queries (0.00ms on average).
-DijkstraRouter answered 40 queries and explored 3.00 edges on average.
+DijkstraRouter answered 76 queries and explored 3.00 edges on average.
 DijkstraRouter spent 0.00s answering queries (0.00ms on average).
-DijkstraRouter answered 40 queries and explored 4.00 edges on average.
+DijkstraRouter answered 56 queries and explored 4.00 edges on average.
 DijkstraRouter spent 0.00s answering queries (0.00ms on average).
-DijkstraRouter answered 18 queries and explored 3.22 edges on average.
+DijkstraRouter answered 50 queries and explored 3.00 edges on average.
+DijkstraRouter spent 0.00s answering queries (0.02ms on average).
+DijkstraRouter answered 34 queries and explored 3.06 edges on average.
 DijkstraRouter spent 0.00s answering queries (0.00ms on average).
-DijkstraRouter answered 4 queries and explored 3.00 edges on average.
+DijkstraRouter answered 46 queries and explored 2.87 edges on average.
 DijkstraRouter spent 0.00s answering queries (0.00ms on average).
-DijkstraRouter answered 18 queries and explored 3.11 edges on average.
+DijkstraRouter answered 74 queries and explored 2.00 edges on average.
+DijkstraRouter spent 0.00s answering queries (0.01ms on average).
+DijkstraRouter answered 70 queries and explored 3.00 edges on average.
+DijkstraRouter spent 0.00s answering queries (0.01ms on average).
+DijkstraRouter answered 64 queries and explored 4.00 edges on average.
+DijkstraRouter spent 0.00s answering queries (0.02ms on average).
+DijkstraRouter answered 54 queries and explored 2.81 edges on average.
 DijkstraRouter spent 0.00s answering queries (0.00ms on average).
-DijkstraRouter answered 40 queries and explored 2.00 edges on average.
+DijkstraRouter answered 34 queries and explored 3.29 edges on average.
 DijkstraRouter spent 0.00s answering queries (0.00ms on average).
-DijkstraRouter answered 22 queries and explored 3.00 edges on average.
+DijkstraRouter answered 40 queries and explored 2.85 edges on average.
 DijkstraRouter spent 0.00s answering queries (0.00ms on average).
-DijkstraRouter answered 28 queries and explored 4.00 edges on average.
+DijkstraRouter answered 78 queries and explored 2.00 edges on average.
+DijkstraRouter spent 0.00s answering queries (0.01ms on average).
+DijkstraRouter answered 74 queries and explored 3.00 edges on average.
 DijkstraRouter spent 0.00s answering queries (0.00ms on average).
-DijkstraRouter answered 24 queries and explored 3.25 edges on average.
+DijkstraRouter answered 54 queries and explored 4.00 edges on average.
 DijkstraRouter spent 0.00s answering queries (0.00ms on average).
-DijkstraRouter answered 12 queries and explored 2.83 edges on average.
+DijkstraRouter answered 70 queries and explored 2.00 edges on average.
 DijkstraRouter spent 0.00s answering queries (0.00ms on average).
-DijkstraRouter answered 20 queries and explored 3.10 edges on average.
+DijkstraRouter answered 70 queries and explored 3.00 edges on average.
+DijkstraRouter spent 0.00s answering queries (0.01ms on average).
+DijkstraRouter answered 70 queries and explored 4.00 edges on average.
 DijkstraRouter spent 0.00s answering queries (0.00ms on average).
-DijkstraRouter answered 40 queries and explored 2.00 edges on average.
+DijkstraRouter answered 56 queries and explored 2.00 edges on average.
 DijkstraRouter spent 0.00s answering queries (0.00ms on average).
-DijkstraRouter answered 36 queries and explored 3.00 edges on average.
+DijkstraRouter answered 70 queries and explored 3.00 edges on average.
 DijkstraRouter spent 0.00s answering queries (0.00ms on average).
-DijkstraRouter answered 24 queries and explored 4.00 edges on average.
-DijkstraRouter spent 0.00s answering queries (0.00ms on average).
-DijkstraRouter answered 42 queries and explored 2.00 edges on average.
-DijkstraRouter spent 0.00s answering queries (0.00ms on average).
-DijkstraRouter answered 26 queries and explored 3.00 edges on average.
-DijkstraRouter spent 0.00s answering queries (0.00ms on average).
-DijkstraRouter answered 28 queries and explored 4.00 edges on average.
-DijkstraRouter spent 0.00s answering queries (0.00ms on average).
-DijkstraRouter answered 32 queries and explored 2.00 edges on average.
-DijkstraRouter spent 0.00s answering queries (0.00ms on average).
-DijkstraRouter answered 36 queries and explored 3.00 edges on average.
-DijkstraRouter spent 0.00s answering queries (0.00ms on average).
-DijkstraRouter answered 38 queries and explored 4.00 edges on average.
-DijkstraRouter spent 0.00s answering queries (0.00ms on average).
+DijkstraRouter answered 64 queries and explored 4.00 edges on average.
+DijkstraRouter spent 0.00s answering queries (0.02ms on average).

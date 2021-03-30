@@ -239,7 +239,7 @@ if __name__ == "__main__":
     random.seed(seed)  # make tests reproducible
     numpy.random.seed(seed)
 
-    sumoBinary = checkBinary('sumo')
+    sumoBinary = checkBinary('sumo-gui')
 
     # 0. Generate the intersection information files
     os.system("bash gen_intersection/gen_data.sh " + str(cfg.LANE_NUM_PER_DIRECTION))
