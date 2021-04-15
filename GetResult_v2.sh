@@ -4,7 +4,7 @@
 
 rm result/*
 
-for i in 0.6 0.65 0.7 0.75 0.8
+for i in 0.9
 do
   for j in $(seq 80 1 99)
   do

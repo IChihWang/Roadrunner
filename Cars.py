@@ -62,7 +62,6 @@ class Car:
         self.is_spillback = False
         self.is_spillback_strict = False
 
-
         out_sub_lane = (cfg.LANE_NUM_PER_DIRECTION-lane%cfg.LANE_NUM_PER_DIRECTION-1)
         self.dst_lane = int(self.out_direction*cfg.LANE_NUM_PER_DIRECTION + out_sub_lane)     # Destination lane before next lane change
         if next_turn == 'R':

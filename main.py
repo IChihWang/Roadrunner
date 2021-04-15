@@ -50,7 +50,7 @@ def run():
     """execute the TraCI control loop"""
     simu_step = 0
 
-    intersections = [IntersectionManager("00%i"%(i) + '_' + "001") for i in range(1, 3)]
+    intersections = [IntersectionManager("00%i"%(i) + '_' + "001") for i in range(1, 4)]
 
     if sys.argv[4] == "T":
         intersections[0].connect(1, intersections[1], 3)
@@ -112,7 +112,11 @@ def run():
                 # Dummy: Generate routes (turnings)
                 if not car_id in car_info:
                     car_info[car_id] = dict()
-                    car_info[car_id]["route"] = [car_id[0], car_id[1], "X", "X"]
+                    car_info[car_id]["route"] = []
+                    path = car_id.split('_')[0]
+                    for turn in path:
+                        car_info[car_id]["route"].append(turn)
+                    car_info[car_id]["route"] += ["X", "X"]
 
 
                 is_handled = False
