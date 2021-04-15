@@ -54,6 +54,7 @@ def run():
 
     if sys.argv[4] == "T":
         intersections[0].connect(1, intersections[1], 3)
+        intersections[1].connect(1, intersections[2], 3)
     else:
         pass
 
