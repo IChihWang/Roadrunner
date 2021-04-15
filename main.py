@@ -50,10 +50,21 @@ def run():
     """execute the TraCI control loop"""
     simu_step = 0
 
-    intersections = [IntersectionManager("00%i"%(i) + '_' + "001") for i in range(1, 4)]
+    intersection_manager_dict = dict()
+    for idx in range(1, 2+1):
+        for jdx in range(1, 2+1):
+            intersection_manager_id = "%3.3o"%(idx) + "_" + "%3.3o"%(jdx)
+            intersection_manager = IntersectionManager(intersection_manager_id)
+            intersection_manager_dict[(idx, jdx)] = intersection_manager
 
     if sys.argv[4] == "T":
-        intersections[0].connect(1, intersections[1], 3)
+        for idx in range(1, 2+1):
+            for jdx in range(1, 2+1):
+                if idx <= 2-1:
+                    intersection_manager_dict[(idx, jdx)].connect(1, intersection_manager_dict[(idx+1, jdx)], 3)
+
+                if jdx <= 2-1:
+                    intersection_manager_dict[(idx, jdx)].connect(2, intersection_manager_dict[(idx, jdx+1)], 0)
     else:
         pass
 
@@ -73,34 +84,6 @@ def run():
 
             if (simu_step*10)//1/10.0 == cfg.N_TIME_STEP:
                 break
-            #'''
-            #if 'L_1383' in intersection_manager.car_list:
-            #if (simu_step*10)//1/10.0 == 900:
-                '''
-                car = intersections[1].car_list['LR_808']
-                print(car.ID, car.zone, car.zone_state, car.CC_state)
-
-                car = intersections[1].car_list['SR_742']
-                print(car.ID, car.zone, car.zone_state, car.CC_state)
-                '''
-
-                #raw_input()
-            #'''
-            '''
-            if (simu_step*10)//1/10.0 == 105:
-                print("check RR_311 RS_317  ?   (If not work, change back to max)")
-                input('Enter enter:')
-            #'''
-
-            '''
-            if simu_step > 1534:
-                car = intersections[1].car_list['LS_2608']
-                print(car.ID, car.zone, car.zone_state, car.CC_state, car.CC_get_front_speed())
-
-                car = intersections[1].car_list['LS_2575']
-                print(car.ID, car.zone, car.zone_state, car.CC_state, car.CC_get_front_speed())
-
-            #'''
 
             traci.simulationStep()
             all_c = traci.vehicle.getIDList()
@@ -120,7 +103,7 @@ def run():
 
 
                 is_handled = False
-                for intersection_manager in intersections:
+                for intersection_manager in intersection_manager_dict.values():
                     if (intersection_manager.check_in_my_region(lane_id) == "On my lane"):
 
                         current_turn = car_info[car_id]["route"][0]
@@ -161,7 +144,7 @@ def run():
                 del car_info[car_id]
 
 
-            for intersection_manager in intersections:
+            for inter_id, intersection_manager in intersection_manager_dict.items():
                 intersection_manager.run(simu_step)
 
             #lane_utility[0].append((simu_step, cfg.TOTAL_LEN-intersections[0].my_road_info[1]['avail_len']))
@@ -190,16 +173,12 @@ def run():
         traceback.print_exc()
 
 
-    #debug_t = threading.Thread(target=debug_ring)
-    #debug_t.start()
     print(sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), sys.argv[4])
 
     # Print out the measurements
-    #print("Average total delay: ", total_delays/car_num)
-    #print("Average delay by scheduling: ", total_delays_by_sche/car_num)
-    print(intersection_manager.total_delays/intersection_manager.car_num, intersection_manager.total_delays_by_sche/intersection_manager.car_num, intersection_manager.car_num)
+    # print(intersection_manager.total_delays/intersection_manager.car_num, intersection_manager.total_delays_by_sche/intersection_manager.car_num, intersection_manager.car_num)
 
-    print("avg_fuel = ",intersection_manager.total_fuel_consumption/intersection_manager.fuel_consumption_count)
+    # print("avg_fuel = ",intersection_manager.total_fuel_consumption/intersection_manager.fuel_consumption_count)
 
 
     file_name2 = 'result/result.csv'
@@ -208,8 +187,10 @@ def run():
         writer2 = csv.writer(csvfile2, dialect='excel-tab', quoting=csv.QUOTE_MINIMAL, delimiter = ',')
         to_write2 = [sys.argv[1], sys.argv[2], sys.argv[3],
                     sys.argv[4], "_", simu_step,
-                    intersections[0].car_num,
-                    intersections[1].car_num,
+                    intersection_manager_dict[(1, 1)].car_num,
+                    intersection_manager_dict[(1, 2)].car_num,
+                    intersection_manager_dict[(2, 1)].car_num,
+                    intersection_manager_dict[(2, 2)].car_num,
                     vehNr,
                     vehNr/6
                     ]
@@ -243,7 +224,7 @@ if __name__ == "__main__":
     random.seed(seed)  # make tests reproducible
     numpy.random.seed(seed)
 
-    sumoBinary = checkBinary('sumo-gui')
+    sumoBinary = checkBinary('sumo')
 
     # 0. Generate the intersection information files
     os.system("bash gen_intersection/gen_data.sh " + str(cfg.LANE_NUM_PER_DIRECTION))

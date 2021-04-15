@@ -37,16 +37,18 @@ def generate_routefile(arrival_rate):
 
 
         route_str = "\n"
-        for intersection_idx in range(3):
-            intersection_id = "00%i"%(intersection_idx+1) + '_' + "001"
-            for src_idx in range(1,5):
-                for dst_idx in range(1,5):
-                    if src_idx != dst_idx:
-                        route_str += "\t<route id=\"route"
-                        route_str += str(intersection_idx)+'_'+str(src_idx)+'_'+str(dst_idx)
-                        route_str += "\" edges=\""
-                        route_str += " " + intersection_id+'_'+str(src_idx)
-                        route_str += "\"/>\n"
+
+        for idx in range(1, 2+1):
+            for jdx in range(1, 2+1):
+                intersection_manager_id = "%3.3o"%(idx) + "_" + "%3.3o"%(jdx)
+                for src_idx in range(1,5):
+                    for dst_idx in range(1,5):
+                        if src_idx != dst_idx:
+                            route_str += "\t<route id=\"route"
+                            route_str += intersection_manager_id +'_'+str(src_idx)+'_'+str(dst_idx)
+                            route_str += "\" edges=\""
+                            route_str += " " + intersection_manager_id+'_'+str(src_idx)
+                            route_str += "\"/>\n"
 
 
         print(route_str, file=routes)
@@ -57,7 +59,7 @@ def generate_routefile(arrival_rate):
             # intersection 1
             intersection_id = "001_001"
 
-            for in_direction in [1, 2, 4]:
+            for in_direction in [1, 4]:
                 if random.uniform(0, 1) < dir_prob[in_direction-1]:
                     #dir_r = random.randrange(3)+1
                     dir_r = numpy.random.choice(numpy.arange(1, 4), p=turn_prob)
@@ -78,78 +80,38 @@ def generate_routefile(arrival_rate):
                         lane_r = 0
 
                     dst_direction = (in_direction-1 + dir_r)%4 + 1
-                    if dst_direction == 3:
+                    if dst_direction == 2:
                         dir_r = numpy.random.choice(numpy.arange(1, 4), p=turn_prob)
                         if dir_r == 1:
                             veh_str += "L"
                         elif dir_r == 2:
                             veh_str += "S"
-                            veh_str += numpy.random.choice(["L", "S", "R"])
+                        elif dir_r == 3:
+                            veh_str += "R"
+                            veh_str += numpy.random.choice(["L", "S"])
+
+                    elif dst_direction == 3:
+                        dir_r = numpy.random.choice(numpy.arange(1, 4), p=turn_prob)
+                        if dir_r == 1:
+                            veh_str += "L"
+                            veh_str += numpy.random.choice(["S", "R"])
+                        elif dir_r == 2:
+                            veh_str += "S"
                         elif dir_r == 3:
                             veh_str += "R"
 
-                        veh_str += "X"  # Doesn't matter
-                    else:
-                        veh_str += "X"  # Doesn't matter
+                    veh_str += "X"  # Doesn't matter
 
-                    veh_str += '_%i" type="car%i" route="route%s" depart="%i" departLane = "%i" departSpeed="%f"/>' % (vehNr, car_length, '0_'+str(in_direction)+'_'+str(dst_direction), i, lane_r, cfg.MAX_SPEED);
+                    veh_str += '_%i" type="car%i" route="route%s" depart="%i" departLane = "%i" departSpeed="%f"/>' % (vehNr, car_length, intersection_id+'_'+str(in_direction)+'_'+str(dst_direction), i, lane_r, cfg.MAX_SPEED);
                     print(veh_str, file=routes)
 
                     vehNr += 1
 
-                    #print("</routes>", file=routes)
-                    #return(idllist)
 
             # intersection 2
             intersection_id = "002_001"
 
-            for in_direction in [2, 4]:
-                if random.uniform(0, 1) < dir_prob[in_direction-1]:
-                    #dir_r = random.randrange(3)+1
-                    dir_r = numpy.random.choice(numpy.arange(1, 4), p=turn_prob)
-                    #lane_r = random.randrange(cfg.LANE_NUM_PER_DIRECTION)
-                    lane_r = 0
-                    car_length = random.randrange(5,10)
-
-
-                    veh_str = "\t<vehicle id=\""
-                    if dir_r == 1:
-                        veh_str += "L"
-                        lane_r = 2
-                    elif dir_r == 2:
-                        veh_str += "S"
-                        lane_r = 1
-                    elif dir_r == 3:
-                        veh_str += "R"
-                        lane_r = 0
-
-                    dst_direction = (in_direction-1 + dir_r)%4 + 1
-                    if dst_direction == 1 or dst_direction == 3:
-                        dir_r = numpy.random.choice(numpy.arange(1, 4), p=turn_prob)
-                        if dir_r == 1:
-                            veh_str += "L"
-                            veh_str += numpy.random.choice(["L", "S", "R"])
-                        elif dir_r == 2:
-                            veh_str += "S"
-                        elif dir_r == 3:
-                            veh_str += "R"
-                            veh_str += numpy.random.choice(["L", "S", "R"])
-                        veh_str += "X"  # Doesn't matter
-                    else:
-                        veh_str += "X"  # Doesn't matter
-
-                    veh_str += '_%i" type="car%i" route="route%s" depart="%i" departLane = "%i" departSpeed="%f"/>' % (vehNr, car_length, '1_'+str(in_direction)+'_'+str(dst_direction), i, lane_r, cfg.MAX_SPEED);
-                    print(veh_str, file=routes)
-
-                    vehNr += 1
-
-                    #print("</routes>", file=routes)
-                    #return(idllist)
-
-            # intersection 3
-            intersection_id = "003_001"
-
-            for in_direction in [2, 3, 4]:
+            for in_direction in [3, 4]:
                 if random.uniform(0, 1) < dir_prob[in_direction-1]:
                     #dir_r = random.randrange(3)+1
                     dir_r = numpy.random.choice(numpy.arange(1, 4), p=turn_prob)
@@ -176,20 +138,129 @@ def generate_routefile(arrival_rate):
                             veh_str += "L"
                         elif dir_r == 2:
                             veh_str += "S"
-                            veh_str += numpy.random.choice(["L", "S", "R"])
                         elif dir_r == 3:
                             veh_str += "R"
-                        veh_str += "X"  # Doesn't matter
-                    else:
-                        veh_str += "X"  # Doesn't matter
+                            veh_str += numpy.random.choice(["L", "S"])
 
-                    veh_str += '_%i" type="car%i" route="route%s" depart="%i" departLane = "%i" departSpeed="%f"/>' % (vehNr, car_length, '2_'+str(in_direction)+'_'+str(dst_direction), i, lane_r, cfg.MAX_SPEED);
+                    elif dst_direction == 2:
+                        dir_r = numpy.random.choice(numpy.arange(1, 4), p=turn_prob)
+                        if dir_r == 1:
+                            veh_str += "L"
+                            veh_str += numpy.random.choice(["S", "R"])
+                        elif dir_r == 2:
+                            veh_str += "S"
+                        elif dir_r == 3:
+                            veh_str += "R"
+
+                    veh_str += "X"  # Doesn't matter
+
+                    veh_str += '_%i" type="car%i" route="route%s" depart="%i" departLane = "%i" departSpeed="%f"/>' % (vehNr, car_length, intersection_id+'_'+str(in_direction)+'_'+str(dst_direction), i, lane_r, cfg.MAX_SPEED);
                     print(veh_str, file=routes)
 
                     vehNr += 1
 
-                    #print("</routes>", file=routes)
-                    #return(idllist)
+
+            # intersection 3
+            intersection_id = "001_002"
+
+            for in_direction in [1, 2]:
+                if random.uniform(0, 1) < dir_prob[in_direction-1]:
+                    #dir_r = random.randrange(3)+1
+                    dir_r = numpy.random.choice(numpy.arange(1, 4), p=turn_prob)
+                    #lane_r = random.randrange(cfg.LANE_NUM_PER_DIRECTION)
+                    lane_r = 0
+                    car_length = random.randrange(5,10)
+
+
+                    veh_str = "\t<vehicle id=\""
+                    if dir_r == 1:
+                        veh_str += "L"
+                        lane_r = 2
+                    elif dir_r == 2:
+                        veh_str += "S"
+                        lane_r = 1
+                    elif dir_r == 3:
+                        veh_str += "R"
+                        lane_r = 0
+
+                    dst_direction = (in_direction-1 + dir_r)%4 + 1
+                    if dst_direction == 3:
+                        dir_r = numpy.random.choice(numpy.arange(1, 4), p=turn_prob)
+                        if dir_r == 1:
+                            veh_str += "L"
+                        elif dir_r == 2:
+                            veh_str += "S"
+                        elif dir_r == 3:
+                            veh_str += "R"
+                            veh_str += numpy.random.choice(["L", "S"])
+
+                    elif dst_direction == 4:
+                        dir_r = numpy.random.choice(numpy.arange(1, 4), p=turn_prob)
+                        if dir_r == 1:
+                            veh_str += "L"
+                            veh_str += numpy.random.choice(["S", "R"])
+                        elif dir_r == 2:
+                            veh_str += "S"
+                        elif dir_r == 3:
+                            veh_str += "R"
+
+                    veh_str += "X"  # Doesn't matter
+
+                    veh_str += '_%i" type="car%i" route="route%s" depart="%i" departLane = "%i" departSpeed="%f"/>' % (vehNr, car_length, intersection_id+'_'+str(in_direction)+'_'+str(dst_direction), i, lane_r, cfg.MAX_SPEED);
+                    print(veh_str, file=routes)
+
+                    vehNr += 1
+
+            # intersection 4
+            intersection_id = "002_002"
+
+            for in_direction in [2, 3]:
+                if random.uniform(0, 1) < dir_prob[in_direction-1]:
+                    #dir_r = random.randrange(3)+1
+                    dir_r = numpy.random.choice(numpy.arange(1, 4), p=turn_prob)
+                    #lane_r = random.randrange(cfg.LANE_NUM_PER_DIRECTION)
+                    lane_r = 0
+                    car_length = random.randrange(5,10)
+
+
+                    veh_str = "\t<vehicle id=\""
+                    if dir_r == 1:
+                        veh_str += "L"
+                        lane_r = 2
+                    elif dir_r == 2:
+                        veh_str += "S"
+                        lane_r = 1
+                    elif dir_r == 3:
+                        veh_str += "R"
+                        lane_r = 0
+
+                    dst_direction = (in_direction-1 + dir_r)%4 + 1
+                    if dst_direction == 1:
+                        dir_r = numpy.random.choice(numpy.arange(1, 4), p=turn_prob)
+                        if dir_r == 1:
+                            veh_str += "L"
+                            veh_str += numpy.random.choice(["R", "S"])
+                        elif dir_r == 2:
+                            veh_str += "S"
+                        elif dir_r == 3:
+                            veh_str += "R"
+
+                    elif dst_direction == 4:
+                        dir_r = numpy.random.choice(numpy.arange(1, 4), p=turn_prob)
+                        if dir_r == 1:
+                            veh_str += "L"
+                        elif dir_r == 2:
+                            veh_str += "S"
+                        elif dir_r == 3:
+                            veh_str += "R"
+                            veh_str += numpy.random.choice(["S", "L"])
+
+                    veh_str += "X"  # Doesn't matter
+
+                    veh_str += '_%i" type="car%i" route="route%s" depart="%i" departLane = "%i" departSpeed="%f"/>' % (vehNr, car_length, intersection_id+'_'+str(in_direction)+'_'+str(dst_direction), i, lane_r, cfg.MAX_SPEED);
+                    print(veh_str, file=routes)
+
+                    vehNr += 1
 
         print("</routes>", file=routes)
     return(vehNr)
