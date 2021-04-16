@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- generated on 04/16/21 21:43:38 by Eclipse SUMO sumo Version 1.8.0
+<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
+
+    <input>
+        <net-file value="data/lane3_roundabout.net.xml"/>
+        <route-files value="data/icacc+.rou.xml"/>
+        <additional-files value="data/icacc+.det.xml"/>
+    </input>
+
+    <output>
+        <tripinfo-output value="tripinfo.xml"/>
+    </output>
+
+    <time>
+        <begin value="0"/>
+        <step-length value="0.01"/>
+    </time>
+
+    <processing>
+        <collision.action value="remove"/>
+        <collision.mingap-factor value="0"/>
+        <time-to-teleport value="-1"/>
+        <lanechange.duration value="0.5"/>
+    </processing>
+
+    <report>
+        <verbose value="true"/>
+        <no-step-log value="true"/>
+    </report>
+
+    <traci_server>
+        <remote-port value="1964"/>
+    </traci_server>
+
+    <gui_only>
+        <start value="true"/>
+        <tracker-interval value="0.01"/>
+    </gui_only>
+
+</configuration>
+-->
+
+<tripinfos xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/tripinfo_file.xsd">
+    <tripinfo id="R_1" depart="0.00" departLane="4_2" departPos="3.10" departSpeed="11.18" departDelay="0.00" arrival="24.22" arrivalLane="-3_2" arrivalPos="200.00" arrivalSpeed="11.18" duration="24.22" routeLength="847.77" waitingTime="0.00" waitingCount="0" stopTime="0.00" timeLoss="0.00" rerouteNo="0" devices="tripinfo_R_1" vType="car@R_1" speedFactor="1.06" vaporized=""/>
+</tripinfos>

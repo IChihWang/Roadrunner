@@ -41,6 +41,13 @@ def generate_routefile(arrival_rate):
                     route_str += str(src_idx)+'_'+str(dst_idx)
                     route_str += "\" edges=\""
                     route_str += " " + str(src_idx)
+                    pre_idx = src_idx
+                    next_idx = (src_idx-1 - 1)%4 +1
+                    while (pre_idx != dst_idx):
+                        route_str += " " + str(pre_idx)+str(pre_idx)
+                        pre_idx = next_idx
+                        next_idx = (pre_idx-1 - 1)%4  +1
+
                     route_str += " -" + str(dst_idx)
                     route_str += "\"/>\n"
 
