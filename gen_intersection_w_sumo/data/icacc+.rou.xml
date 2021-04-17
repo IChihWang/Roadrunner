@@ -1,6 +1,6 @@
 <routes>
 
-	<vType id="car" accel="100.0" decel="100.0" sigma="0.0" length="3" minGap="3.000000" maxSpeed="11.180000" tau="0.010000" carFollowModel="CACC" color="255,255,255"/>
+	<vType id="car" accel="100.0" decel="100.0" sigma="0.0" length="5" minGap="3.000000" maxSpeed="11.180000" tau="0.050000" carFollowModel="CACC" color="255,255,255"/>
 
 	<route id="route1_2" edges=" 1 11 44 33 -2"/>
 	<route id="route1_3" edges=" 1 11 44 -3"/>
@@ -15,6 +15,6 @@
 	<route id="route4_2" edges=" 4 44 33 -2"/>
 	<route id="route4_3" edges=" 4 44 -3"/>
 
-	<vehicle id="R_1" type="car" route="route4_3" depart="0.000000" departLane = "2" departSpeed="11.180000"/>
-	<vehicle id="S_0" type="car" route="route4_2" depart="14.900000" departLane = "2" departSpeed="11.180000"/>
+	<vehicle id="L_0" type="car" route="route4_1" depart="0.000000" departLane = "0" departSpeed="11.180000"/>
+	<vehicle id="L_1" type="car" route="route2_3" depart="8.000000" departLane = "0" departSpeed="11.180000"/>
 </routes>

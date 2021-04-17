@@ -29,7 +29,7 @@ CAR_MIN_LEN = 5
 CAR_AVG_LEN = (CAR_MAX_LEN+CAR_MIN_LEN)/2
 
 N_TIME_STEP = 3600  # number of time steps
-TIME_STEP = 0.01
+TIME_STEP = 0.05
 
 DISTANCE = 1.5 # 1.5 lane
 

@@ -23,18 +23,18 @@ def generate_routefile(time_gap, sub_lane_1, turning_1, sub_lane_2, turning_2, d
     with open("data/icacc+.rou.xml", "w") as routes:
         print("<routes>\n", file=routes)
 
-        assert(sub_lane_1 < cfg.LANE_NUM_PER_DIRECTION, "lane num should be < " + str(cfg.LANE_NUM_PER_DIRECTION))
-        assert(sub_lane_2 < cfg.LANE_NUM_PER_DIRECTION, "lane num should be < " + str(cfg.LANE_NUM_PER_DIRECTION))
+        assert sub_lane_1 < cfg.LANE_NUM_PER_DIRECTION, "lane num should be < " + str(cfg.LANE_NUM_PER_DIRECTION)
+        assert sub_lane_2 < cfg.LANE_NUM_PER_DIRECTION, "lane num should be < " + str(cfg.LANE_NUM_PER_DIRECTION)
 
         lane_1 = cfg.LANE_NUM_PER_DIRECTION - sub_lane_1 -1
         lane_2 = cfg.LANE_NUM_PER_DIRECTION - sub_lane_2 -1
 
-        assert(dir_2 < 4)
+        assert dir_2 < 4, "dict >= 4?!"
         '''
         dir_2 start from zero, clockwise!
         '''
 
-        vType_str = '\t<vType id="car" accel="100.0" decel="100.0" sigma="0.0" length="%i" minGap="%f" maxSpeed="%f" tau="%f" carFollowModel="CACC" color="255,255,255"/>' % (cfg.HEADWAY, cfg.HEADWAY, cfg.MAX_SPEED, cfg.TIME_STEP);
+        vType_str = '\t<vType id="car" accel="100.0" decel="100.0" sigma="0.0" length="%i" minGap="%f" maxSpeed="%f" tau="%f" carFollowModel="CACC" color="255,255,255"/>' % (5, cfg.HEADWAY, cfg.MAX_SPEED, cfg.TIME_STEP);
         print(vType_str, file=routes)
 
         route_str = "\n"
