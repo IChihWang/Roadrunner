@@ -26,18 +26,22 @@ import traceback
 import config as cfg
 from gen_route import generate_routefile, generate_one_car_routefile
 import json
+import math
 
 
 ###################
-
-car_list = []
+resolution = 2
 
 def run():
     """execute the TraCI control loop"""
     simu_step = 0
+    car_list = []
 
     car_0_enter_time = None
     car_0_leave_time = None
+    trajectory_list = []
+    advising_info = []
+    XY_record = []
 
     try:
         while traci.simulation.getMinExpectedNumber() > 0:
@@ -70,16 +74,44 @@ def run():
             if car_0_enter_time != None and car_0_leave_time == None:
                 in_intersection_time_stamp = simu_step-car_0_enter_time
                 in_intersection_distance = in_intersection_time_stamp*cfg.MAX_SPEED
-                print(traci.vehicle.getPosition(car_id)[0], traci.vehicle.getPosition(car_id)[1])
+                coord = traci.vehicle.getPosition(car_id)
+                angle = traci.vehicle.getAngle(car_id)
+                trajectory_list.append({'distance':in_intersection_distance, 'X':coord[0], 'Y':coord[1]})
+
+                x0 = (coord[0] + 50) * resolution / cfg.LANE_WIDTH
+                y0 = (coord[1] + 50) * resolution / cfg.LANE_WIDTH
+                x1 = (coord[0] - (cfg.LANE_WIDTH/2)*math.cos(angle*math.pi/180) + 50) * resolution / cfg.LANE_WIDTH
+                y1 = (coord[1] + (cfg.LANE_WIDTH/2)*math.sin(angle*math.pi/180) + 50) * resolution / cfg.LANE_WIDTH
+                x2 = (coord[0] + (cfg.LANE_WIDTH/2)*math.cos(angle*math.pi/180) + 50) * resolution / cfg.LANE_WIDTH
+                y2 = (coord[1] - (cfg.LANE_WIDTH/2)*math.sin(angle*math.pi/180) + 50) * resolution / cfg.LANE_WIDTH
+
+                x0 = int(x0)
+                y0 = int(y0)
+                id_0 = str(x0)+str(y0)
+                x1 = int(x1)
+                y1 = int(y1)
+                id_1 = str(x1)+str(y1)
+                x2 = int(x2)
+                y2 = int(y2)
+                id_2 = str(x2)+str(y2)
+
+                if id_0 not in XY_record:
+                    XY_record.append(id_0)
+                    advising_info.append({'distance':in_intersection_distance, 'X':x0, 'Y':y0})
+                if id_1 not in XY_record:
+                    XY_record.append(id_1)
+                    advising_info.append({'distance':in_intersection_distance, 'X':x1, 'Y':y1})
+                if id_2 not in XY_record:
+                    XY_record.append(id_2)
+                    advising_info.append({'distance':in_intersection_distance, 'X':x2, 'Y':y2})
 
 
             simu_step += cfg.TIME_STEP
 
-        traci.close()
     except Exception as e:
         traceback.print_exc()
 
-    return
+    return trajectory_list, advising_info, car_0_leave_time-car_0_enter_time
 
 
 ###########################
@@ -87,19 +119,20 @@ def run():
 if __name__ == "__main__":
     print("Usage: python code.py")
 
-    sumoBinary = checkBinary('sumo-gui')
+    sumoBinary = checkBinary('sumo')
 
     data_dict = dict()
     in_intersection_travel_time_dict = dict()
+    trajectory_list_dict = dict()
+    advise_list_dict = dict()
 
-    for lane_1 in range(1):
-        for turn_1 in ['S']:
-
+    for lane_1 in range(4*cfg.LANE_NUM_PER_DIRECTION):
+    #for lane_1 in [0]:
+        for turn_1 in ['S', 'L', 'R']:
+        #for turn_1 in ['S', 'L']:
             key_str = str(lane_1) + turn_1
 
             in_intersection_travel_time = None
-            tau_S1_S2 = None
-            time_gap_1_search = 0
 
             print(key_str, "==================")
 
@@ -113,27 +146,29 @@ if __name__ == "__main__":
                                          "--collision.mingap-factor", "0"])
 
                 # 4. Start running SUMO
-                run()
+                trajectory_list, advising_info, in_intersection_travel_time = run()
 
-                traci.close()
+                in_intersection_travel_time_dict[key_str] = in_intersection_travel_time
+                trajectory_list_dict[key_str] = trajectory_list
+                advise_list_dict[key_str] = advising_info
+
+
             except Exception as e:
                 traceback.print_exc()
                 None
 
+            try:
+                traci.close()
+            except Exception as e:
+                None
 
-            '''
-            # Write tau if gap is necessary
-            if tau_S1_S2 != None or tau_S2_S1 != None:
-                if tau_S1_S2 == None:
-                    tau_S1_S2 = 0
-                if tau_S2_S1 == None:
-                    tau_S2_S1 = 0
-                data_dict[key_str] = {'tau_S1_S2':tau_S1_S2+cfg.HEADWAY/cfg.MAX_SPEED, 'tau_S2_S1':tau_S2_S1+cfg.HEADWAY/cfg.MAX_SPEED}
-                with open("../inter_info/sumo_lane"+str(cfg.LANE_NUM_PER_DIRECTION)+".json", 'w') as file:
-                    file.write(json.dumps(data_dict))
 
-            if in_intersection_travel_time != None:
-                in_intersection_travel_time_dict[str(sublane_1) + turn_1] = in_intersection_travel_time
-                with open("../inter_length_info/sumo_lane"+str(cfg.LANE_NUM_PER_DIRECTION)+".json", 'w') as file:
-                    file.write(json.dumps(in_intersection_travel_time_dict))
-            '''
+    with open("inter_data/sumo_inter_info"+str(cfg.LANE_NUM_PER_DIRECTION)+".json", 'w') as file:
+        file.write(json.dumps(trajectory_list_dict))
+
+    #TODO : modify read in Lane_advise
+    with open("../advise_info/sumo_lane_adv"+str(cfg.LANE_NUM_PER_DIRECTION)+".json", 'w') as file:
+        file.write(json.dumps(advise_list_dict))
+
+    with open("../inter_length_info/sumo_lane"+str(cfg.LANE_NUM_PER_DIRECTION)+".json", 'w') as file:
+                file.write(json.dumps(in_intersection_travel_time_dict))

@@ -15,5 +15,5 @@
 	<route id="route4_2" edges=" 4 44 33 -2"/>
 	<route id="route4_3" edges=" 4 44 -3"/>
 
-	<vehicle id="S_0" type="car" route="route4_2" depart="0.000000" departLane = "2" departSpeed="11.180000"/>
+	<vehicle id="R_0" type="car" route="route1_4" depart="0.000000" departLane = "0" departSpeed="11.180000"/>
 </routes>

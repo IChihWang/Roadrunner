@@ -30,11 +30,11 @@ import json
 
 ###################
 
-car_list = []
 
 def run():
     """execute the TraCI control loop"""
     simu_step = 0
+    car_list = []
 
     car_0_enter_time = None
     car_0_leave_time = None
