@@ -53,7 +53,7 @@ def run():
                     traci.vehicle.setSpeed(car_id, cfg.MAX_SPEED)
                     lane = traci.vehicle.getLaneID(car_id)
 
-                    traci.vehicle.moveTo(car_id, lane, 100)
+                    traci.vehicle.moveTo(car_id, lane, 180)
 
                     car_list.append(car_id)
 
@@ -86,16 +86,16 @@ def run():
 if __name__ == "__main__":
     print("Usage: python code.py")
 
-    sumoBinary = checkBinary('sumo-gui')
+    sumoBinary = checkBinary('sumo')
 
     data_dict = dict()
     in_intersection_travel_time_dict = dict()
 
-    for sublane_1 in range(2, cfg.LANE_NUM_PER_DIRECTION):
-        for dir_2 in range(2, 4):
-            for sublane_2 in range(2, cfg.LANE_NUM_PER_DIRECTION):
-                for turn_1 in ['L']:
-                    for turn_2 in ['L']:
+    for sublane_1 in range(cfg.LANE_NUM_PER_DIRECTION):
+        for dir_2 in range(4):
+            for sublane_2 in range(cfg.LANE_NUM_PER_DIRECTION):
+                for turn_1 in ['S', 'L', 'R']:
+                    for turn_2 in ['S','L', 'R']:
                         lane_2 = dir_2*cfg.LANE_NUM_PER_DIRECTION + sublane_2
 
                         if sublane_1 >= lane_2:
