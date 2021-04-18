@@ -23,6 +23,7 @@ from sumolib import checkBinary
 import traci
 import traceback
 
+sys.path.append('..')
 import config as cfg
 from gen_route import generate_routefile, generate_one_car_routefile
 import json
@@ -131,6 +132,12 @@ def run():
 if __name__ == "__main__":
     print("Usage: python code.py")
 
+    if sys.platform == "win32":
+        os.system("rmdir data /s/q")
+        os.system("xcopy ..\data data /E/Q/I")
+    else:
+        os.system("rm -r data")
+        os.system("cp -r ../data .")
     sumoBinary = checkBinary('sumo')
 
     data_dict = dict()
@@ -184,3 +191,8 @@ if __name__ == "__main__":
 
     with open("../inter_length_info/sumo_lane"+str(cfg.LANE_NUM_PER_DIRECTION)+".json", 'w') as file:
                 file.write(json.dumps(in_intersection_travel_time_dict))
+
+    if sys.platform == "win32":
+        os.system("rmdir data /s/q")
+    else:
+        os.system("rm -r data")

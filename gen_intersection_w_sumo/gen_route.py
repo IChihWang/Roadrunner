@@ -9,7 +9,8 @@ import random
 import numpy
 
 import traci
-
+import sys
+sys.path.append('..')
 import config as cfg
 
 def generate_one_car_routefile(in_lane_1, turning_1):

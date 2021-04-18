@@ -115,12 +115,10 @@ class IntersectionManager:
 
 
         # ===== Entering the intersection (Record the cars) =====
-        to_be_deleted = []
         for car_id, car in self.car_list.items():
             lane_id = traci.vehicle.getLaneID(car_id)
             if lane_id not in self.in_lanes:
                 traci.vehicle.setSpeed(car_id, car.speed_in_intersection)
-                to_be_deleted.append(car_id)
 
                 self.leaving_cars[car_id] = self.car_list[car_id]
                 self.car_list[car_id].Leave_T = simu_step
@@ -132,6 +130,7 @@ class IntersectionManager:
 
                 car.zone == "Intersection"
 
+                '''
                 if car.D+car.OT <= -0.4 or car.D+car.OT >= 0.4:
                     print("DEBUG: Car didn't arrive at the intersection at right time.")
 
@@ -142,10 +141,7 @@ class IntersectionManager:
                     print("OT", car.OT)
                     print("=======")
                     print("-----------------")
-
-        for car_id in to_be_deleted:
-            del self.ccz_list[car_id]
-            self.car_list.pop(car_id)
+                '''
 
 
 
@@ -157,8 +153,11 @@ class IntersectionManager:
                 traci.vehicle.setSpeed(car_id, cfg.MAX_SPEED)
                 to_be_deleted.append(car_id)
 
+
         for car_id in to_be_deleted:
             del self.leaving_cars[car_id]
+            del self.ccz_list[car_id]
+            self.car_list.pop(car_id)
 
 
 

@@ -12,6 +12,8 @@ import numpy as np
 
 import traceback
 
+import sys
+sys.path.append('..')
 import config as cfg
 import json
 import math
@@ -58,7 +60,7 @@ if __name__ == "__main__":
             for data_i in list_i:
                 for data_j in list_j:
                     distance = get_distance(data_i, data_j)
-                    if distance < cfg.LANE_WIDTH:
+                    if distance < cfg.LANE_WIDTH/1.5:
                         is_potential_collision = True
 
                         if data_i['distance'] < Xm:
@@ -70,12 +72,20 @@ if __name__ == "__main__":
                         if data_j['distance'] > Yd:
                             Yd = data_j['distance']
 
+                        #if key_str == '0S1S':
+                            #print(key_str, data_i['distance'], data_j['distance'])
+
                         if distance_diff_max_12 < data_i['distance']-data_j['distance']:
+                            # car i is at the front
                             distance_diff_max_12 = data_i['distance']-data_j['distance']
                         elif distance_diff_max_21 < data_j['distance']-data_i['distance']:
+                            # car j is at the front
                             distance_diff_max_21 = data_j['distance']-data_i['distance']
 
             if is_potential_collision:
+                #diff = abs(distance_diff_max_12-(-distance_diff_max_21))
+                #if  diff < 2*cfg.LANE_WIDTH:
+                    #print(key_str)
                 lane_info_dict[key_str] = {'distance_diff_max_12':distance_diff_max_12, 'distance_diff_max_21':distance_diff_max_21}
 
 

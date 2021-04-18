@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import os
 import sys
+sys.path.append('..')
 
 sys.path.append('/usr/share/sumo/tools/')
 # we need to import python modules from the $SUMO_HOME/tools directory
