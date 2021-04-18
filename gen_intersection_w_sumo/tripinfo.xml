@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<!-- generated on 04/18/21 03:35:09 by Eclipse SUMO sumo Version 1.8.0
+<!-- generated on 04/18/21 15:31:35 by Eclipse SUMO sumo Version 1.8.0
 <configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
 
     <input>
@@ -30,7 +30,7 @@
     </report>
 
     <traci_server>
-        <remote-port value="7578"/>
+        <remote-port value="12438"/>
     </traci_server>
 
     <gui_only>

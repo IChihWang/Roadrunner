@@ -43,6 +43,9 @@ def run():
     advising_info = []
     XY_record = []
 
+    min_coord_x = 99999
+    min_coord_y = 99999
+
     try:
         while traci.simulation.getMinExpectedNumber() > 0:
 
@@ -104,12 +107,21 @@ def run():
                 if id_2 not in XY_record:
                     XY_record.append(id_2)
                     advising_info.append({'distance':in_intersection_distance, 'X':x2, 'Y':y2})
-
+                min_coord_x = min(min_coord_x, x0)
+                min_coord_x = min(min_coord_x, x1)
+                min_coord_x = min(min_coord_x, x2)
+                min_coord_y = min(min_coord_x, y0)
+                min_coord_y = min(min_coord_x, y1)
+                min_coord_y = min(min_coord_x, y2)
 
             simu_step += cfg.TIME_STEP
 
     except Exception as e:
         traceback.print_exc()
+
+    for data in advising_info:
+        data['X'] -= min_coord_x
+        data['Y'] -= min_coord_y
 
     return trajectory_list, advising_info, car_0_leave_time-car_0_enter_time
 
