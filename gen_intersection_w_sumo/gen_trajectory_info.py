@@ -84,10 +84,12 @@ def run():
 
                 x0 = (coord[0] + 50) * resolution / cfg.LANE_WIDTH
                 y0 = (coord[1] + 50) * resolution / cfg.LANE_WIDTH
-                x1 = (coord[0] - (cfg.LANE_WIDTH/2)*math.cos(angle*math.pi/180) + 50) * resolution / cfg.LANE_WIDTH
-                y1 = (coord[1] + (cfg.LANE_WIDTH/2)*math.sin(angle*math.pi/180) + 50) * resolution / cfg.LANE_WIDTH
-                x2 = (coord[0] + (cfg.LANE_WIDTH/2)*math.cos(angle*math.pi/180) + 50) * resolution / cfg.LANE_WIDTH
-                y2 = (coord[1] - (cfg.LANE_WIDTH/2)*math.sin(angle*math.pi/180) + 50) * resolution / cfg.LANE_WIDTH
+
+
+                x1 = (coord[0] - (cfg.LANE_WIDTH/4)*math.cos(angle*math.pi/180) + 50) * resolution / cfg.LANE_WIDTH
+                y1 = (coord[1] + (cfg.LANE_WIDTH/4)*math.sin(angle*math.pi/180) + 50) * resolution / cfg.LANE_WIDTH
+                x2 = (coord[0] + (cfg.LANE_WIDTH/4)*math.cos(angle*math.pi/180) + 50) * resolution / cfg.LANE_WIDTH
+                y2 = (coord[1] - (cfg.LANE_WIDTH/4)*math.sin(angle*math.pi/180) + 50) * resolution / cfg.LANE_WIDTH
 
                 x0 = int(x0)
                 y0 = int(y0)
@@ -111,20 +113,16 @@ def run():
                 min_coord_x = min(min_coord_x, x0)
                 min_coord_x = min(min_coord_x, x1)
                 min_coord_x = min(min_coord_x, x2)
-                min_coord_y = min(min_coord_x, y0)
-                min_coord_y = min(min_coord_x, y1)
-                min_coord_y = min(min_coord_x, y2)
+                min_coord_y = min(min_coord_y, y0)
+                min_coord_y = min(min_coord_y, y1)
+                min_coord_y = min(min_coord_y, y2)
 
             simu_step += cfg.TIME_STEP
 
     except Exception as e:
         traceback.print_exc()
 
-    for data in advising_info:
-        data['X'] -= min_coord_x
-        data['Y'] -= min_coord_y
-
-    return trajectory_list, advising_info, car_0_leave_time-car_0_enter_time
+    return trajectory_list, advising_info, car_0_leave_time-car_0_enter_time, min_coord_x, min_coord_y
 
 
 ###########################
@@ -144,6 +142,9 @@ if __name__ == "__main__":
     in_intersection_travel_time_dict = dict()
     trajectory_list_dict = dict()
     advise_list_dict = dict()
+
+    min_min_coord_x = 99999
+    min_min_coord_y = 99999
 
     for lane_1 in range(4*cfg.LANE_NUM_PER_DIRECTION):
     #for lane_1 in [0]:
@@ -165,7 +166,9 @@ if __name__ == "__main__":
                                          "--collision.mingap-factor", "0"])
 
                 # 4. Start running SUMO
-                trajectory_list, advising_info, in_intersection_travel_time = run()
+                trajectory_list, advising_info, in_intersection_travel_time, min_coord_x, min_coord_y = run()
+                min_min_coord_x = min(min_min_coord_x, min_coord_x)
+                min_min_coord_y = min(min_min_coord_y, min_coord_y)
 
                 in_intersection_travel_time_dict[key_str] = in_intersection_travel_time
                 trajectory_list_dict[key_str] = trajectory_list
@@ -185,7 +188,11 @@ if __name__ == "__main__":
     with open("inter_data/sumo_inter_info"+str(cfg.LANE_NUM_PER_DIRECTION)+".json", 'w') as file:
         file.write(json.dumps(trajectory_list_dict))
 
-    #TODO : modify read in Lane_advise
+    for id, data_list in advise_list_dict.items():
+        for data in data_list:
+            data['X'] -= min_min_coord_x
+            data['Y'] -= min_min_coord_y
+
     with open("../advise_info/sumo_lane_adv"+str(cfg.LANE_NUM_PER_DIRECTION)+".json", 'w') as file:
         file.write(json.dumps(advise_list_dict))
 
