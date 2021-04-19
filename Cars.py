@@ -352,7 +352,7 @@ class Car:
 
         is_catching_up_front = False
 
-        if self.CC_front_car != None:
+        if self.CC_front_car != None and self.CC_front_car.CC_shift != None:
             shifting_end = cfg.CCZ_DEC2_LEN
             front_remain_D = (self.CC_front_car.OT+self.CC_front_car.D)-(self.CC_front_car.position/cfg.MAX_SPEED)
             catch_up_distance = (front_remain_D - self.D)*cfg.MAX_SPEED
