@@ -180,6 +180,8 @@ def IcaccPlus(old_cars, new_cars, pedestrian_time_mark_list):
         min_delay = 0
         if new_cars[c_idx].is_reschedule:
             min_delay = (2*cfg.CCZ_ACC_LEN/(cfg.MAX_SPEED+0)) - (cfg.CCZ_ACC_LEN/cfg.MAX_SPEED)
+            dist = max(0, new_cars[c_idx].position-(cfg.CCZ_ACC_LEN+cfg.CCZ_DEC2_LEN))
+            min_delay += ((2*dist/(cfg.MAX_SPEED+0)) - (dist/cfg.MAX_SPEED))
 
         if new_cars[c_idx].turning == 'S':
             new_cars[c_idx].D = solver.NumVar(min_delay, solver.infinity(), 'd'+str(c_idx))

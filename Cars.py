@@ -91,9 +91,9 @@ class Car:
         self.CC_front_car = None
         self.CC_is_stop_n_go = False
 
-        self.is_reschedule = False
+        self.is_reschedule = False  # Whether the car is scheduled
+        self.need_reschedule = None        # whether the car CURRENTLY need rescheduling
         self.is_error = None
-
         # ======================================================================
 
 
@@ -117,9 +117,8 @@ class Car:
 
             if min_travel_time > self.OT + self.D + cfg.RESCHEDULE_THREADSHOLD:
                 self.zone_state == "not_scheduled"
-                print(self.ID, min_travel_time - (self.OT + self.D), min_travel_time, self.OT + self.D)
-                self.D = cfg.LARGE_NUM
                 self.is_reschedule = True
+                self.need_reschedule = True
 
         if leader_tuple != None:
             if leader_tuple[0] in car_list.keys():
@@ -181,6 +180,7 @@ class Car:
                 if (dec_time < 0):
                     print(self.ID, slow_down_speed, dec_time, self.position, my_speed+slow_down_speed)
                 traci.vehicle.slowDown(self.ID,slow_down_speed, dec_time)
+
             else:
                 slow_down_speed = 0.001
                 dec_time = (self.position-(cfg.CCZ_ACC_LEN+cfg.CCZ_DEC2_LEN)) / ((my_speed+slow_down_speed)/2)
@@ -189,11 +189,12 @@ class Car:
                 traci.vehicle.setMaxSpeed(self.ID, slow_down_speed)
                 traci.vehicle.slowDown(self.ID,slow_down_speed , dec_time)
 
+
         elif (self.CC_state == "Entering_decelerate" or self.CC_state == "Entering_wait") and (self.CC_slowdown_timer <= 0):
             traci.vehicle.setSpeed(self.ID, self.CC_slow_speed)
 
             wait_time = cfg.LARGE_NUM
-            if isinstance(self.D, float):
+            if isinstance(self.D, float) and (not self.need_reschedule):
                 wait_time = self.OT+self.D - ((self.position - cfg.CCZ_DEC2_LEN) / ((cfg.MAX_SPEED+self.CC_slow_speed)/2)) - ((cfg.CCZ_DEC2_LEN) / ((self.speed_in_intersection+cfg.MAX_SPEED)/2))
 
             if wait_time > 0:
@@ -276,13 +277,17 @@ class Car:
              traci.vehicle.setSpeed(self.ID, cfg.MAX_SPEED)
 
         elif (self.CC_state == "CruiseControl_ready"):
-            reply = self.CC_get_shifts(car_list)
-            self.CC_get_slow_down_speed()
-            if self.CC_is_stop_n_go == True:
-                # Only stop at very closed to the intersection
+            if self.is_reschedule == True:
+                self.CC_is_stop_n_go = True
                 self.CC_state = "Keep_Max_speed"
             else:
-                self.CC_state = "CruiseControl_shift_start"
+                reply = self.CC_get_shifts(car_list)
+                self.CC_get_slow_down_speed()
+                if self.CC_is_stop_n_go == True:
+                    # Only stop at very closed to the intersection
+                    self.CC_state = "Keep_Max_speed"
+                else:
+                    self.CC_state = "CruiseControl_shift_start"
 
         elif (self.CC_state == "CruiseControl_shift_start") and self.position < (cfg.CCZ_LEN-self.CC_shift):
             self.CC_state = "CruiseControl_decelerate"

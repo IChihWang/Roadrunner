@@ -192,7 +192,7 @@ class IntersectionManager:
                 advised_n_sched_car = []
                 for car_id, car in self.car_list.items():
                     if car.zone == "GZ" or car.zone == "BZ" or car.zone == "CCZ":
-                        if isinstance(car.D, float):
+                        if isinstance(car.D, float) and (not car.need_reschedule):
                             sched_car.append(car)
                         else:
                             n_sched_car.append(car)
@@ -200,16 +200,14 @@ class IntersectionManager:
                         advised_n_sched_car.append(car)
 
 
-
-                for c_idx in range(len(n_sched_car)):
-                    if not n_sched_car[c_idx].is_reschedule:
-                        traci.vehicle.setColor(n_sched_car[c_idx].ID, (100,250,92))
+                for car in n_sched_car:
+                    car.D = None
+                    if car.is_error:
+                        traci.vehicle.setColor(car.ID, (255,0,0))
+                    elif not car.need_reschedule:
+                        traci.vehicle.setColor(car.ID, (100,250,92))
                     else:
-                        print(n_sched_car[c_idx].CC_state)
-                        n_sched_car[c_idx].is_reschedule = False
-                        traci.vehicle.setColor(n_sched_car[c_idx].ID, (255,51,255))
-
-                    n_sched_car[c_idx].D = None
+                        traci.vehicle.setColor(car.ID, (255,51,255))
 
 
                 # Setting the pedestrian list
@@ -400,13 +398,23 @@ def Scheduling(lane_advisor, sched_car, n_sched_car,
 
     to_be_deleted = []
     for car in n_sched_car:
-        if car.is_error == None or car.is_error == True:
+        car.need_reschedule = False
+
+        if car.is_error == False:
+            pass
+        elif car.is_error == None and car.is_reschedule:
+            # Reschedule is called by the Car
+            car.is_error = False
+
+        elif car.is_error == None or car.is_error == True:
+            # Reschedule is called by the Noise
             if random.uniform(0, 1) < cfg.SCHEDULE_DELAY_PROBABILITY:
                 car.is_error = True
+                car.is_reschedule = True
+                car.need_reschedule = True
                 car.D = None
-                traci.vehicle.setColor(car.ID, (255,0,0))
                 to_be_deleted.append(car)
             else:
                 car.is_error = False
     for car in to_be_deleted:
-        to_be_deleted.remove(car)
+        n_sched_car.remove(car)
