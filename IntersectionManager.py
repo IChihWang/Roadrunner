@@ -4,7 +4,7 @@ import config as cfg
 import traci
 import threading
 import time
-
+import random
 
 from Cars import Car
 from milp import Icacc, IcaccPlus, Fcfs, FixedSignal, Fcfs_not_reservation
@@ -113,7 +113,6 @@ class IntersectionManager:
             self.total_fuel_consumption += traci.vehicle.getFuelConsumption(car_key)*cfg.TIME_STEP
             self.fuel_consumption_count += 1
 
-
         # ===== Entering the intersection (Record the cars) =====
         to_be_deleted = []
         for car_id, car in self.car_list.items():
@@ -193,10 +192,10 @@ class IntersectionManager:
                 advised_n_sched_car = []
                 for car_id, car in self.car_list.items():
                     if car.zone == "GZ" or car.zone == "BZ" or car.zone == "CCZ":
-                        if car.zone_state == "not_scheduled" or car.is_reschedule:
-                            n_sched_car.append(car)
-                        else:
+                        if isinstance(car.D, float):
                             sched_car.append(car)
+                        else:
+                            n_sched_car.append(car)
                     elif car.zone == "PZ" or car.zone == "AZ":
                         advised_n_sched_car.append(car)
 
@@ -398,3 +397,16 @@ def Scheduling(lane_advisor, sched_car, n_sched_car,
 
     end = time.time()
     schedule_time.append(end-start)
+
+    to_be_deleted = []
+    for car in n_sched_car:
+        if car.is_error == None or car.is_error == True:
+            if random.uniform(0, 1) < cfg.SCHEDULE_DELAY_PROBABILITY:
+                car.is_error = True
+                car.D = None
+                traci.vehicle.setColor(car.ID, (255,0,0))
+                to_be_deleted.append(car)
+            else:
+                car.is_error = False
+    for car in to_be_deleted:
+        to_be_deleted.remove(car)

@@ -135,6 +135,7 @@ if __name__ == "__main__":
     seed = int(sys.argv[2])
     random.seed(seed)  # make tests reproducible
     numpy.random.seed(seed)
+    cfg.SCHEDULE_DELAY_PROBABILITY = float(sys.argv[5])
 
     options = get_options()
 
