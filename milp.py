@@ -177,11 +177,15 @@ def IcaccPlus(old_cars, new_cars, pedestrian_time_mark_list):
 
     # part 3: claim parameters
     for c_idx in range(len(new_cars)):
+        min_delay = 0
+        if new_cars[c_idx].is_reschedule:
+            min_delay = (2*cfg.CCZ_ACC_LEN/(cfg.MAX_SPEED+0)) - (cfg.CCZ_ACC_LEN/cfg.MAX_SPEED)
+
         if new_cars[c_idx].turning == 'S':
-            new_cars[c_idx].D = solver.NumVar(0, solver.infinity(), 'd'+str(c_idx))
+            new_cars[c_idx].D = solver.NumVar(min_delay, solver.infinity(), 'd'+str(c_idx))
         else:
             min_d = (2*cfg.CCZ_DEC2_LEN/(cfg.MAX_SPEED+cfg.TURN_SPEED)) - (cfg.CCZ_DEC2_LEN/cfg.MAX_SPEED)
-            new_cars[c_idx].D = solver.NumVar(min_d, solver.infinity(), 'd'+str(c_idx))
+            new_cars[c_idx].D = solver.NumVar(min_d+min_delay, solver.infinity(), 'd'+str(c_idx))
 
 
     # part 4: set constrain (10)

@@ -193,7 +193,7 @@ class IntersectionManager:
                 advised_n_sched_car = []
                 for car_id, car in self.car_list.items():
                     if car.zone == "GZ" or car.zone == "BZ" or car.zone == "CCZ":
-                        if car.zone_state == "not_scheduled":
+                        if car.zone_state == "not_scheduled" or car.is_reschedule:
                             n_sched_car.append(car)
                         else:
                             sched_car.append(car)
@@ -203,7 +203,13 @@ class IntersectionManager:
 
 
                 for c_idx in range(len(n_sched_car)):
-                    traci.vehicle.setColor(n_sched_car[c_idx].ID, (100,250,92))
+                    if not n_sched_car[c_idx].is_reschedule:
+                        traci.vehicle.setColor(n_sched_car[c_idx].ID, (100,250,92))
+                    else:
+                        print(n_sched_car[c_idx].CC_state)
+                        n_sched_car[c_idx].is_reschedule = False
+                        traci.vehicle.setColor(n_sched_car[c_idx].ID, (255,51,255))
+
                     n_sched_car[c_idx].D = None
 
 
@@ -216,27 +222,14 @@ class IntersectionManager:
                 self.pedestrian_time_mark_list = self.get_max_AT_direction(sched_car, self.is_pedestrian_list, self.pedestrian_time_mark_list)
                 #print(self.pedestrian_time_mark_list)
 
-                '''
-                print(len(n_sched_car))
-                for car in n_sched_car:
-                    in_dir = car.in_dir
-                    out_dir = car.out_dir
-                    if self.pedestrian_time_mark_list[out_dir] != None:
-                        traci.vehicle.setColor(car.ID, (255,187,59))
-                    if self.pedestrian_time_mark_list[in_dir] != None:
-                        traci.vehicle.setColor(car.ID, (255,59,59))
-                '''
-
-                self.scheduling_thread = threading.Thread(target = Scheduling,
-                                                        args = (self.lane_advisor,
-                                                                sched_car, n_sched_car,
-                                                                advised_n_sched_car,
-                                                                self.cc_list,
-                                                                self.car_list,
-                                                                self.pedestrian_time_mark_list,
-                                                                self.schedule_period_count,
-                                                                self.schedule_time))
-                self.scheduling_thread.start()
+                Scheduling(self.lane_advisor,
+                        sched_car, n_sched_car,
+                        advised_n_sched_car,
+                        self.cc_list,
+                        self.car_list,
+                        self.pedestrian_time_mark_list,
+                        self.schedule_period_count,
+                        self.schedule_time)
 
 
                 self.schedule_period_count = 0

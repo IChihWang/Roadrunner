@@ -91,6 +91,7 @@ class Car:
         self.CC_front_car = None
         self.CC_is_stop_n_go = False
 
+        self.is_reschedule = False
 
 
         # ======================================================================
@@ -108,6 +109,17 @@ class Car:
 
         leader_tuple = traci.vehicle.getLeader(self.ID)
 
+        if self.zone == "CCZ" and isinstance(self.D, float) and (not "Entering" in self.CC_state):
+            min_travel_time = (self.position - cfg.CCZ_ACC_LEN - cfg.CCZ_DEC2_LEN)/cfg.MAX_SPEED
+            my_speed = traci.vehicle.getSpeed(self.ID)
+            min_travel_time += (2*cfg.CCZ_ACC_LEN/(cfg.MAX_SPEED+my_speed))
+            min_travel_time += (2*cfg.CCZ_DEC2_LEN/(cfg.MAX_SPEED+cfg.TURN_SPEED))
+
+            if min_travel_time > self.OT + self.D + cfg.RESCHEDULE_THREADSHOLD:
+                self.zone_state == "not_scheduled"
+                print(self.ID, min_travel_time - (self.OT + self.D), min_travel_time, self.OT + self.D)
+                self.D = cfg.LARGE_NUM
+                self.is_reschedule = True
 
         if leader_tuple != None:
             if leader_tuple[0] in car_list.keys():
