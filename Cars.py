@@ -7,6 +7,7 @@ from __future__ import print_function
 import os
 import sys
 import math
+import random
 
 sys.path.append('/usr/share/sumo/tools/')
 # we need to import python modules from the $SUMO_HOME/tools directory
@@ -94,6 +95,7 @@ class Car:
         self.is_reschedule = False  # Whether the car is scheduled
         self.need_reschedule = None        # whether the car CURRENTLY need rescheduling
         self.is_error = None
+        #self.schedule_transmit_delay = max(0, random.gauss(cfg.SCHEDULE_DELAY_MEAN, cfg.SCHEDULE_DELAY_MEAN))
         # ======================================================================
 
 

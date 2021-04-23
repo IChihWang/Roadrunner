@@ -44,6 +44,7 @@ from IntersectionManager import IntersectionManager
 
 ###################
 
+total_car_num = 0
 
 def run():
     """execute the TraCI control loop"""
@@ -100,7 +101,7 @@ def run():
     with open(file_name, 'a', newline='') as csvfile:
         writer = csv.writer(csvfile, dialect='excel-tab', quoting=csv.QUOTE_MINIMAL, delimiter = ',')
         to_write = [sys.argv[1], sys.argv[2], sys.argv[3],
-                    sys.argv[4], "_", simu_step, intersection_manager.car_num,
+                    sys.argv[4], sys.argv[5], "_", simu_step, total_car_num, intersection_manager.car_num,
                     intersection_manager.total_delays/intersection_manager.car_num,
                     intersection_manager.total_delays_by_sche/intersection_manager.car_num,
                     intersection_manager.total_fuel_consumption/intersection_manager.fuel_consumption_count,
@@ -135,7 +136,7 @@ if __name__ == "__main__":
     seed = int(sys.argv[2])
     random.seed(seed)  # make tests reproducible
     numpy.random.seed(seed)
-    cfg.SCHEDULE_DELAY_PROBABILITY = float(sys.argv[5])
+    cfg.SCHEDULE_LOSS_PROBABILITY = float(sys.argv[5])
 
     options = get_options()
 
@@ -144,14 +145,14 @@ if __name__ == "__main__":
         sumoBinary = checkBinary('sumo')
     else:
         sumoBinary = checkBinary('sumo-gui')
-    sumoBinary = checkBinary('sumo-gui')
+    sumoBinary = checkBinary('sumo')
 
     # 0. Generate the intersection information files
     os.system("bash gen_intersection/gen_data.sh " + str(cfg.LANE_NUM_PER_DIRECTION))
 
     # 1. Generate the route file for this simulation
     arrival_rate = float(sys.argv[1])
-    generate_routefile(arrival_rate)
+    total_car_num = len(generate_routefile(arrival_rate))
 
 
 

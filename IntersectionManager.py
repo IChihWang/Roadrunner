@@ -396,6 +396,8 @@ def Scheduling(lane_advisor, sched_car, n_sched_car,
     end = time.time()
     schedule_time.append(end-start)
 
+
+    #'''
     to_be_deleted = []
     for car in n_sched_car:
         car.need_reschedule = False
@@ -408,7 +410,7 @@ def Scheduling(lane_advisor, sched_car, n_sched_car,
 
         elif car.is_error == None or car.is_error == True:
             # Reschedule is called by the Noise
-            if random.uniform(0, 1) < cfg.SCHEDULE_DELAY_PROBABILITY:
+            if random.uniform(0, 1) < cfg.SCHEDULE_LOSS_PROBABILITY:
                 car.is_error = True
                 car.is_reschedule = True
                 car.need_reschedule = True
@@ -418,3 +420,4 @@ def Scheduling(lane_advisor, sched_car, n_sched_car,
                 car.is_error = False
     for car in to_be_deleted:
         n_sched_car.remove(car)
+    #'''
