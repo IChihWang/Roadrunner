@@ -128,7 +128,7 @@ if __name__ == "__main__":
     numpy.random.seed(seed)
 
     # this script has been called from the command line. It will start sumo as a server, then connect and run
-    sumoBinary = checkBinary('sumo')
+    sumoBinary = checkBinary('sumo-gui')
 
     # 0. Generate the intersection information files
     os.system("bash gen_intersection/gen_data.sh " + str(cfg.LANE_NUM_PER_DIRECTION))

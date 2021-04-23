@@ -120,9 +120,7 @@ class IntersectionManager:
             if lane_id not in self.in_lanes:
                 traci.vehicle.setSpeed(car_id, car.speed_in_intersection)
 
-                self.leaving_cars[car_id] = self.car_list[car_id]
-
-                if car.zone != "Intersection":
+                if not car_id in self.leaving_cars:
                     self.car_list[car_id].Leave_T = simu_step
                     self.total_delays += (car.Leave_T - car.Enter_T) - ((cfg.CCZ_LEN+cfg.GZ_LEN+cfg.BZ_LEN+cfg.PZ_LEN+cfg.AZ_LEN)/cfg.MAX_SPEED)
 
@@ -130,7 +128,8 @@ class IntersectionManager:
                     self.total_delays_by_sche += car.D
                     self.car_num += 1
 
-                car.zone = "Intersection"
+                    self.leaving_cars[car_id] = self.car_list[car_id]
+
 
                 '''
                 if car.D+car.OT <= -0.4 or car.D+car.OT >= 0.4:
