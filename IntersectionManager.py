@@ -130,7 +130,7 @@ class IntersectionManager:
                     self.total_delays_by_sche += car.D
                     self.car_num += 1
 
-                car.zone == "Intersection"
+                car.zone = "Intersection"
 
                 '''
                 if car.D+car.OT <= -0.4 or car.D+car.OT >= 0.4:
