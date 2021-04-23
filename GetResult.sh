@@ -2,14 +2,16 @@
 
 #365 369 399 696 699 711 799 996 7 666
 
-for j in 123 777 333 147 66 99 19 12 250 360
+rm result/*
+
+for j in 4 5
 do
-  for i in $(seq 0.1 0.1 1.0)
+  for i in $(seq 0.05 0.05 0.65)
   do
-    for k in $(seq 0 1 2)
+    for k in $(seq 0 1 3)
     do
       echo $j $i $k
-      python new_runner.py $i $j $k >> result/$i.$k.txt
+      python3 main.py $i $j $k T
     done
   done
 done 
