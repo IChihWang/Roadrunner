@@ -122,6 +122,7 @@ class Car:
                 self.is_reschedule = True
                 self.need_reschedule = True
 
+
         if leader_tuple != None:
             if leader_tuple[0] in car_list.keys():
                 front_car_ID = leader_tuple[0]
@@ -150,7 +151,7 @@ class Car:
             self.CC_state = "Entering_decelerate"
             my_speed = traci.vehicle.getSpeed(self.ID)
 
-            if isinstance(self.D, float):
+            if isinstance(self.D, float) and (not self.need_reschedule):
                 # Compute the slowdown speed
                 T = self.OT+self.D- ((cfg.CCZ_DEC2_LEN) / ((self.speed_in_intersection+cfg.MAX_SPEED)/2))
                 max_total_time = (self.position - (cfg.CCZ_ACC_LEN+cfg.CCZ_DEC2_LEN))/(my_speed/2) + cfg.CCZ_ACC_LEN/(cfg.MAX_SPEED/2)
