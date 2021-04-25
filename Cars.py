@@ -301,8 +301,6 @@ class Car:
             delta = (cfg.CCZ_LEN-self.CC_shift)-self.position
             dec_time = (cfg.CCZ_ACC_LEN-delta) / ((cfg.MAX_SPEED+speed)/2)
             traci.vehicle.setMaxSpeed(self.ID, speed)
-            if self.ID == "S_1784":
-                print(self.ID, speed, dec_time, delta, self.CC_shift)
             traci.vehicle.slowDown(self.ID, speed, dec_time)
             self.CC_slowdown_timer = dec_time
 
@@ -366,14 +364,8 @@ class Car:
             #2 Compute catch up time and reflect to the space
             catch_up_t = space_between_two/(cfg.MAX_SPEED-self.CC_front_car.CC_slow_speed)
 
-            if self.ID == "S_1784":
-                print("1111 ", self.ID, cc_shift_max, space_between_two, catch_up_t, self.CC_front_car.CC_slow_speed, self.CC_front_car.CC_shift, self.CC_front_pos_diff)
-
             cc_shift_max += catch_up_t*cfg.MAX_SPEED
 
-
-        if self.ID == "S_1784":
-            print("11 ", self.ID, cc_shift_max, cfg.CCZ_LEN-self.CC_shift_end-2*cfg.CCZ_ACC_LEN)
 
         cc_shift_max = min(cc_shift_max, cfg.CCZ_LEN-self.CC_shift_end-2*cfg.CCZ_ACC_LEN)
 
