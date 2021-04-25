@@ -111,6 +111,7 @@ class Car:
 
         leader_tuple = traci.vehicle.getLeader(self.ID)
 
+
         if self.zone == "CCZ" and isinstance(self.D, float) and (not "Entering" in self.CC_state):
             min_travel_time = (self.position - cfg.CCZ_ACC_LEN - cfg.CCZ_DEC2_LEN)/cfg.MAX_SPEED
             my_speed = traci.vehicle.getSpeed(self.ID)
@@ -121,7 +122,6 @@ class Car:
                 self.zone_state == "not_scheduled"
                 self.is_reschedule = True
                 self.need_reschedule = True
-
 
         if leader_tuple != None:
             if leader_tuple[0] in car_list.keys():
@@ -301,6 +301,8 @@ class Car:
             delta = (cfg.CCZ_LEN-self.CC_shift)-self.position
             dec_time = (cfg.CCZ_ACC_LEN-delta) / ((cfg.MAX_SPEED+speed)/2)
             traci.vehicle.setMaxSpeed(self.ID, speed)
+            if self.ID == "S_1784":
+                print(self.ID, speed, dec_time, delta, self.CC_shift)
             traci.vehicle.slowDown(self.ID, speed, dec_time)
             self.CC_slowdown_timer = dec_time
 
@@ -363,10 +365,17 @@ class Car:
 
             #2 Compute catch up time and reflect to the space
             catch_up_t = space_between_two/(cfg.MAX_SPEED-self.CC_front_car.CC_slow_speed)
+
+            if self.ID == "S_1784":
+                print("1111 ", self.ID, cc_shift_max, space_between_two, catch_up_t, self.CC_front_car.CC_slow_speed, self.CC_front_car.CC_shift, self.CC_front_pos_diff)
+
             cc_shift_max += catch_up_t*cfg.MAX_SPEED
 
-        cc_shift_max = min(cc_shift_max, cfg.CCZ_LEN-self.CC_shift_end-2*cfg.CCZ_ACC_LEN)
 
+        if self.ID == "S_1784":
+            print("11 ", self.ID, cc_shift_max, cfg.CCZ_LEN-self.CC_shift_end-2*cfg.CCZ_ACC_LEN)
+
+        cc_shift_max = min(cc_shift_max, cfg.CCZ_LEN-self.CC_shift_end-2*cfg.CCZ_ACC_LEN)
 
         # 1.3 Determine the delay it desires. Reserving for the following cars
         # Count cars that'll enter CCZ during the delaying
@@ -401,7 +410,7 @@ class Car:
 
         # 1.4 Decide the final shift
         shifting = min(reserve_shift, cc_shift_max)
-
+        shifting = max(shifting, cfg.CCZ_LEN-self.position)
         self.CC_shift = shifting
 
         return {'shifting': shifting, 'shifting_end': self.CC_shift_end}

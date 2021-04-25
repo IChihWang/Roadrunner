@@ -1,11 +1,14 @@
 
 rm result\result.csv
 
+python .\main.py 0.5375 36 0 T 0.6
 
 python .\main.py 0.3125 2 0 T 0.7
 python .\main.py 0.3125 2 0 T 0.9
 python .\main.py 0.3125 32 0 T 0.3
 python .\main.py 0.3125 33 0 T 0.6
+
+
 
 
 
