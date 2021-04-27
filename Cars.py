@@ -356,6 +356,8 @@ class Car:
                 # The car is going to catch up the front car
                 shifting_end = self.CC_front_car.CC_shift_end + self.CC_front_car.length + cfg.HEADWAY
                 is_catching_up_front = True
+
+            shifting_end = max(shifting_end, cfg.CCZ_DEC2_LEN+2*cfg.CCZ_ACC_LEN)
             self.CC_shift_end = shifting_end
 
 
