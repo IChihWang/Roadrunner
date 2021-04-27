@@ -136,7 +136,8 @@ if __name__ == "__main__":
     seed = int(sys.argv[2])
     random.seed(seed)  # make tests reproducible
     numpy.random.seed(seed)
-    cfg.SCHEDULE_LOSS_PROBABILITY = float(sys.argv[5])
+    cfg.SCHEDULE_LOSS_PROBABILITY = 0
+    cfg.CONTROL_DELAY_PROBABILITY = float(sys.argv[5])
 
     options = get_options()
 
@@ -145,7 +146,7 @@ if __name__ == "__main__":
         sumoBinary = checkBinary('sumo')
     else:
         sumoBinary = checkBinary('sumo-gui')
-    sumoBinary = checkBinary('sumo')
+    sumoBinary = checkBinary('sumo-gui')
 
     # 0. Generate the intersection information files
     os.system("bash gen_intersection/gen_data.sh " + str(cfg.LANE_NUM_PER_DIRECTION))

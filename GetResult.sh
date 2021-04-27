@@ -2,14 +2,17 @@
 
 #365 369 399 696 699 711 799 996 7 666
 
-for j in 123 777 333 147 66 99 19 12 250 360
+for j in 6 7 16 17 26 27
 do
-  for i in $(seq 0.1 0.1 1.0)
+  for i in 0.5375 0.0625 0.3125
   do
-    for k in $(seq 0 1 2)
-    do
-      echo $j $i $k
-      python new_runner.py $i $j $k >> result/$i.$k.txt
+    for k in 0
+      do
+      for prob in $(seq 0.1 0.1 0.9)
+      do	
+      	echo $j $i $k
+      	python3 main.py $i $j $k T $prob
+      done
     done
   done
 done 

@@ -85,7 +85,7 @@ class Car:
 
         self.CC_slow_speed = cfg.MAX_SPEED
         self.CC_shift = None
-        self.CC_shift_end = 0
+        self.CC_shift_end = cfg.CCZ_DEC2_LEN+2*cfg.CCZ_ACC_LEN
 
         self.CC_state = None
         self.CC_slowdown_timer = 0
@@ -95,6 +95,9 @@ class Car:
         self.is_reschedule = False  # Whether the car is scheduled
         self.need_reschedule = None        # whether the car CURRENTLY need rescheduling
         self.is_error = None
+
+        self.is_control_delay = False   # Whether we add some delay on control
+        self.original_delay = None     # Original delay told by the scheduler
         #self.schedule_transmit_delay = max(0, random.gauss(cfg.SCHEDULE_DELAY_MEAN, cfg.SCHEDULE_DELAY_MEAN))
         # ======================================================================
 
@@ -149,6 +152,12 @@ class Car:
         # 2. If the car is ready for stopping
         if (self.position < (2*cfg.CCZ_ACC_LEN+cfg.CCZ_DEC2_LEN)) and ((self.CC_state == None) or (not ("Entering" in self.CC_state))):
             self.CC_state = "Entering_decelerate"
+
+            if self.is_control_delay:
+                self.need_reschedule = True
+                self.is_reschedule = True
+                self.D = self.original_delay
+
             my_speed = traci.vehicle.getSpeed(self.ID)
 
             if isinstance(self.D, float) and (not self.need_reschedule):
@@ -184,7 +193,6 @@ class Car:
                 if (dec_time < 0):
                     print(self.ID, slow_down_speed, dec_time, self.position, my_speed+slow_down_speed)
                 traci.vehicle.slowDown(self.ID,slow_down_speed, dec_time)
-
             else:
                 slow_down_speed = 0.001
                 dec_time = (self.position-(cfg.CCZ_ACC_LEN+cfg.CCZ_DEC2_LEN)) / ((my_speed+slow_down_speed)/2)
@@ -192,7 +200,6 @@ class Car:
                 self.CC_slow_speed = slow_down_speed
                 traci.vehicle.setMaxSpeed(self.ID, slow_down_speed)
                 traci.vehicle.slowDown(self.ID,slow_down_speed , dec_time)
-
 
         elif (self.CC_state == "Entering_decelerate" or self.CC_state == "Entering_wait") and (self.CC_slowdown_timer <= 0):
             traci.vehicle.setSpeed(self.ID, self.CC_slow_speed)

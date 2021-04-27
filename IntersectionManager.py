@@ -196,13 +196,7 @@ class IntersectionManager:
 
                 for car in n_sched_car:
                     car.D = None
-                    if car.is_error:
-                        traci.vehicle.setColor(car.ID, (255,0,0))
-                    elif not car.need_reschedule:
-                        traci.vehicle.setColor(car.ID, (100,250,92))
-                    else:
-                        traci.vehicle.setColor(car.ID, (255,51,255))
-
+                ori_n_sched_car = n_sched_car
 
                 # Setting the pedestrian list
                 self.is_pedestrian_list = [True]*4
@@ -221,6 +215,16 @@ class IntersectionManager:
                         self.pedestrian_time_mark_list,
                         self.schedule_period_count,
                         self.schedule_time)
+
+                for car in ori_n_sched_car:
+                    if car.is_control_delay:
+                        traci.vehicle.setColor(car.ID, (255,128,0))
+                    elif car.is_error:
+                        traci.vehicle.setColor(car.ID, (255,0,0))
+                    elif not car.need_reschedule:
+                        traci.vehicle.setColor(car.ID, (100,250,92))
+                    else:
+                        traci.vehicle.setColor(car.ID, (255,51,255))
 
 
                 self.schedule_period_count = 0
@@ -415,3 +419,10 @@ def Scheduling(lane_advisor, sched_car, n_sched_car,
     for car in to_be_deleted:
         n_sched_car.remove(car)
     #'''
+
+    for car in n_sched_car:
+        if not car.is_control_delay:
+            if random.uniform(0, 1) < cfg.CONTROL_DELAY_PROBABILITY:
+                car.is_control_delay = True
+                car.original_delay = car.D
+                car.D += random.uniform(0, 5)
