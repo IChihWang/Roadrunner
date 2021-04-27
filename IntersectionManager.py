@@ -114,38 +114,25 @@ class IntersectionManager:
             self.fuel_consumption_count += 1
 
         # ===== Entering the intersection (Record the cars) =====
-        to_be_deleted = []
         for car_id, car in self.car_list.items():
             lane_id = traci.vehicle.getLaneID(car_id)
             if lane_id not in self.in_lanes:
                 traci.vehicle.setSpeed(car_id, car.speed_in_intersection)
-                to_be_deleted.append(car_id)
 
                 self.leaving_cars[car_id] = self.car_list[car_id]
-                self.car_list[car_id].Leave_T = simu_step
-                self.total_delays += (car.Leave_T - car.Enter_T) - ((cfg.CCZ_LEN+cfg.GZ_LEN+cfg.BZ_LEN+cfg.PZ_LEN+cfg.AZ_LEN)/cfg.MAX_SPEED)
+                if self.car_list[car_id].Leave_T == None:
+                    self.car_list[car_id].Leave_T = simu_step
 
-                # Measurement
-                self.total_delays_by_sche += car.D
-                self.car_num += 1
+                    if car.D+car.OT <= -0.4 or car.D+car.OT >= 0.4:
+                        print("DEBUG: Car didn't arrive at the intersection at right time.")
 
-                car.zone == "Intersection"
-
-                if car.D+car.OT <= -0.4 or car.D+car.OT >= 0.4:
-                    print("DEBUG: Car didn't arrive at the intersection at right time.")
-
-                    print("ID", car.ID)
-                    print("OT+D", car.D+car.OT)
-                    print("lane", car.lane)
-                    print("D", car.D)
-                    print("OT", car.OT)
-                    print("=======")
-                    print("-----------------")
-
-        for car_id in to_be_deleted:
-            del self.ccz_list[car_id]
-            self.car_list.pop(car_id)
-
+                        print("ID", car.ID)
+                        print("OT+D", car.D+car.OT)
+                        print("lane", car.lane)
+                        print("D", car.D)
+                        print("OT", car.OT)
+                        print("=======")
+                        print("-----------------")
 
 
         # ===== Leaving the intersection (Reset the speed to V_max) =====
@@ -158,6 +145,13 @@ class IntersectionManager:
 
         for car_id in to_be_deleted:
             del self.leaving_cars[car_id]
+            del self.ccz_list[car_id]
+            self.car_list.pop(car_id)
+
+            self.total_delays += (car.Leave_T - car.Enter_T) - ((cfg.CCZ_LEN+cfg.GZ_LEN+cfg.BZ_LEN+cfg.PZ_LEN+cfg.AZ_LEN)/cfg.MAX_SPEED)
+            # Measurement
+            self.total_delays_by_sche += car.D
+            self.car_num += 1
 
 
 

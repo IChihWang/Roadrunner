@@ -146,11 +146,12 @@ def Icacc(old_cars, new_cars):
     # part 8: Solve the problem
     sol_status = solver.Solve()
     if (sol_status == 2):
-        # Unfeasible
-        #print ([car.position for car in old_cars])
-        #print ([car.position for car in new_cars])
-        print("Error: no fesible solution")
-        exit()
+        print("No fesible solution, retry")
+
+        for car in new_cars:
+            car.D = None
+        new_cars.clear()
+        return None
 
 
     for nc_idx in range(len(new_cars)):
@@ -399,8 +400,12 @@ def IcaccPlus(old_cars, new_cars, pedestrian_time_mark_list):
         # Unfeasible
         #print ([car.position for car in old_cars])
         #print ([car.position for car in new_cars])
-        print("Error: no fesible solution")
-        exit()
+        print("No fesible solution, retry")
+
+        for car in new_cars:
+            car.D = None
+        new_cars.clear()
+        return None
 
     for nc_idx in range(len(new_cars)):
         new_cars[nc_idx].D = new_cars[nc_idx].D.solution_value()
