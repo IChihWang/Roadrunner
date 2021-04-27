@@ -84,7 +84,7 @@ class Car:
 
         self.CC_slow_speed = cfg.MAX_SPEED
         self.CC_shift = None
-        self.CC_shift_end = 0
+        self.CC_shift_end = cfg.CCZ_DEC2_LEN+2*cfg.CCZ_ACC_LEN
 
         self.CC_state = None
         self.CC_slowdown_timer = 0
