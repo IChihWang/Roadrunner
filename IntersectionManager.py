@@ -7,7 +7,7 @@ import time
 import random
 
 from Cars import Car
-from milp import Icacc, IcaccPlus, Fcfs, FixedSignal, Fcfs_not_reservation
+from milp import IcaccPlus, Fcfs, FixedSignal, Fcfs_not_reservation
 from LaneAdviser import LaneAdviser
 from get_inter_length_info import Data
 
@@ -178,59 +178,55 @@ class IntersectionManager:
         # Put here due to the thread handling
         self.schedule_period_count += cfg.TIME_STEP
         if self.schedule_period_count > cfg.GZ_LEN/cfg.MAX_SPEED -1:
-            if self.scheduling_thread == None or (not self.scheduling_thread.is_alive()):
 
-                # Classify the cars for scheduler
-                sched_car = []
-                n_sched_car = []
-                advised_n_sched_car = []
-                for car_id, car in self.car_list.items():
-                    if car.zone == "GZ" or car.zone == "BZ" or car.zone == "CCZ":
-                        if isinstance(car.D, float) and (not car.need_reschedule):
-                            sched_car.append(car)
-                        else:
-                            n_sched_car.append(car)
-                    elif car.zone == "PZ" or car.zone == "AZ":
-                        advised_n_sched_car.append(car)
-
-
-                for car in n_sched_car:
-                    car.D = None
-                ori_n_sched_car = n_sched_car
-
-                # Setting the pedestrian list
-                self.is_pedestrian_list = [True]*4
-                for direction in range(4):
-                    # Cancel the request if a pedestrian time has been scheduled
-                    if self.is_pedestrian_list[direction] == True and self.pedestrian_time_mark_list[direction] != None:
-                        self.is_pedestrian_list[direction] = False
-                self.pedestrian_time_mark_list = self.get_max_AT_direction(sched_car, self.is_pedestrian_list, self.pedestrian_time_mark_list)
-                #print(self.pedestrian_time_mark_list)
-
-                Scheduling(self.lane_advisor,
-                        sched_car, n_sched_car,
-                        advised_n_sched_car,
-                        self.cc_list,
-                        self.car_list,
-                        self.pedestrian_time_mark_list,
-                        self.schedule_period_count,
-                        self.schedule_time)
-
-                for car in ori_n_sched_car:
-                    if car.is_control_delay:
-                        traci.vehicle.setColor(car.ID, (255,128,0))
-                    elif car.is_error:
-                        traci.vehicle.setColor(car.ID, (255,0,0))
-                    elif not car.need_reschedule:
-                        traci.vehicle.setColor(car.ID, (100,250,92))
+            # Classify the cars for scheduler
+            sched_car = []
+            n_sched_car = []
+            advised_n_sched_car = []
+            for car_id, car in self.car_list.items():
+                if car.zone == "GZ" or car.zone == "BZ" or car.zone == "CCZ":
+                    if isinstance(car.D, float) and (not car.need_reschedule):
+                        sched_car.append(car)
                     else:
-                        traci.vehicle.setColor(car.ID, (255,51,255))
+                        n_sched_car.append(car)
+                elif car.zone == "PZ" or car.zone == "AZ":
+                    advised_n_sched_car.append(car)
 
 
-                self.schedule_period_count = 0
+            for car in n_sched_car:
+                car.D = None
+            ori_n_sched_car = n_sched_car
 
-            else:
-                print("Warning: the update period does not sync with the length of GZ")
+            # Setting the pedestrian list
+            self.is_pedestrian_list = [True]*4
+            for direction in range(4):
+                # Cancel the request if a pedestrian time has been scheduled
+                if self.is_pedestrian_list[direction] == True and self.pedestrian_time_mark_list[direction] != None:
+                    self.is_pedestrian_list[direction] = False
+            self.pedestrian_time_mark_list = self.get_max_AT_direction(sched_car, self.is_pedestrian_list, self.pedestrian_time_mark_list)
+            #print(self.pedestrian_time_mark_list)
+
+            Scheduling(self.lane_advisor,
+                    sched_car, n_sched_car,
+                    advised_n_sched_car,
+                    self.cc_list,
+                    self.car_list,
+                    self.pedestrian_time_mark_list,
+                    self.schedule_period_count,
+                    self.schedule_time)
+
+            for car in ori_n_sched_car:
+                if car.is_control_delay:
+                    traci.vehicle.setColor(car.ID, (255,128,0))
+                elif car.is_error:
+                    traci.vehicle.setColor(car.ID, (255,0,0))
+                elif not car.is_reschedule:
+                    traci.vehicle.setColor(car.ID, (100,250,92))
+                else:
+                    traci.vehicle.setColor(car.ID, (255,51,255))
+
+
+            self.schedule_period_count = 0
 
 
 
@@ -371,8 +367,8 @@ def Scheduling(lane_advisor, sched_car, n_sched_car,
     start = time.time()
     if int(sys.argv[3]) == 0:
         IcaccPlus(sched_car, n_sched_car, pedestrian_time_mark_list)
-    elif int(sys.argv[3]) == 1:
-        Icacc(sched_car, n_sched_car)
+    #elif int(sys.argv[3]) == 1:
+        #Icacc(sched_car, n_sched_car)
     elif int(sys.argv[3]) == 2:
         Fcfs(sched_car, n_sched_car, pedestrian_time_mark_list)
     elif int(sys.argv[3]) == 3:
@@ -421,8 +417,8 @@ def Scheduling(lane_advisor, sched_car, n_sched_car,
     #'''
 
     for car in n_sched_car:
-        if not car.is_control_delay:
+        car.original_delay = car.D
+        if not car.is_control_delay and not car.need_reschedule:
             if random.uniform(0, 1) < cfg.CONTROL_DELAY_PROBABILITY:
                 car.is_control_delay = True
-                car.original_delay = car.D
                 car.D += random.uniform(0, 5)
