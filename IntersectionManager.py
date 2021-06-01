@@ -462,7 +462,7 @@ class IntersectionManager:
             lane = car.lane
             car_accumulate_len_lane[lane] += car.length + cfg.HEADWAY
             if isinstance(car.D, float):
-                lane_car_delay_position[lane].append({"position":car_accumulate_len_lane[lane], "delay":car.D})
+                lane_car_delay_position[lane].append({"position":car_accumulate_len_lane[lane], "delay":car.D, "ET":car.D+car.OT+(car.length + cfg.HEADWAY)/car.speed_in_intersection})
 
             if car.position > cfg.TOTAL_LEN - cfg.AZ_LEN and lane != car.desired_lane:
                 car_accumulate_len_lane[car.desired_lane] += car.length + cfg.HEADWAY
@@ -474,7 +474,7 @@ class IntersectionManager:
 
 
         for lane_idx in range(4*cfg.LANE_NUM_PER_DIRECTION):
-            self.my_road_info[lane_idx]['avail_len'] = cfg.TOTAL_LEN - car_accumulate_len_lane[lane_idx] - cfg.HEADWAY
+            self.my_road_info[lane_idx]['avail_len'] = cfg.TOTAL_LEN - car_accumulate_len_lane[lane_idx] - cfg.HEADWAY - cfg.CCZ_ACC_LEN
             self.my_road_info[lane_idx]['delay'] = delay_lane[lane_idx]
             self.my_road_info[lane_idx]['simu_step'] = simu_step
             self.my_road_info[lane_idx]['car_delay_position'] = lane_car_delay_position[lane_idx]

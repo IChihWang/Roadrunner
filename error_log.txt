@@ -1,0 +1,4 @@
+***Starting server on port 2860 ***
+Loading net-file from 'data/lane2by2.net.xml' ... done (18ms).
+Loading done.
+Simulation version 1.8.0 started with time: 0.00
