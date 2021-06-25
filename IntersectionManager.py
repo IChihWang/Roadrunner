@@ -386,24 +386,28 @@ class IntersectionManager:
 
         # Check whether there is a spillback
         accumulate_car_len_lane = [0]*(4*cfg.LANE_NUM_PER_DIRECTION)
-        spillback_lane_advise_avoid = [False]*(4*cfg.LANE_NUM_PER_DIRECTION)
+        #spillback_lane_advise_avoid = [False]*(4*cfg.LANE_NUM_PER_DIRECTION)
+        spillback_lane_advise_avoid = [False]*(4)
         #'''
         for car_id, car in self.car_list.items():
             lane_idx = car.dst_lane
             lane_changed_to_idx = car.dst_lane_changed_to
 
+            '''
             if self.others_road_info[lane_idx] != None:
                 accumulate_car_len_lane[lane_idx] += (car.length + cfg.HEADWAY)
             if self.others_road_info[lane_changed_to_idx] != None:
                 accumulate_car_len_lane[lane_changed_to_idx] += (car.length + cfg.HEADWAY)
+            '''
             if car.is_spillback == True:
-                spillback_lane_advise_avoid[lane_idx] = True
+                spillback_lane_advise_avoid[car.lane // cfg.LANE_NUM_PER_DIRECTION] = True
 
+        '''
         for lane_idx in range(4*cfg.LANE_NUM_PER_DIRECTION):
             if self.others_road_info[lane_idx] != None:
                 if accumulate_car_len_lane[lane_idx] >= self.others_road_info[lane_idx]['avail_len']:
                     spillback_lane_advise_avoid[lane_idx] = True
-
+        '''
 
 
         for car_id, car in self.car_list.items():
@@ -474,7 +478,7 @@ class IntersectionManager:
 
 
         for lane_idx in range(4*cfg.LANE_NUM_PER_DIRECTION):
-            self.my_road_info[lane_idx]['avail_len'] = cfg.TOTAL_LEN - car_accumulate_len_lane[lane_idx] - cfg.HEADWAY - cfg.CCZ_ACC_LEN
+            self.my_road_info[lane_idx]['avail_len'] = cfg.TOTAL_LEN - car_accumulate_len_lane[lane_idx] - cfg.HEADWAY - cfg.CCZ_ACC_LEN - cfg.CAR_MAX_LEN
             self.my_road_info[lane_idx]['delay'] = delay_lane[lane_idx]
             self.my_road_info[lane_idx]['simu_step'] = simu_step
             self.my_road_info[lane_idx]['car_delay_position'] = lane_car_delay_position[lane_idx]
