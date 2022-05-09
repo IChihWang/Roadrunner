@@ -234,9 +234,8 @@ class IntersectionManager:
         self.comm_delay_count += 1
         if self.comm_delay_count >= cfg.COMM_DELAY_STEPS:
             self.comm_delay_count = -99999999   # Set to negative inf
-            for car_id, D in delayed_D_dict:
+            for car_id, D in delayed_D_dict.items():
                 self.car_list[car_id].D = D
-
 
 
 
@@ -371,7 +370,8 @@ def Scheduling(lane_advisor, sched_car, n_sched_car,
                 pedestrian_time_mark_list, schedule_period_count,
                 schedule_time):
 
-    delayed_D_dict = dict()
+
+    delayed_D_dict.clear()
     start = time.time()
     if int(sys.argv[3]) == 0:
         IcaccPlus(sched_car, n_sched_car, pedestrian_time_mark_list)
@@ -422,7 +422,7 @@ def Scheduling(lane_advisor, sched_car, n_sched_car,
             else:
                 car.is_error = False
 
-        if COMM_DELAY_STEPS > 0:
+        if cfg.COMM_DELAY_STEPS > 0:
             delayed_D_dict[car.ID] = car.D
             car.D = None
 
