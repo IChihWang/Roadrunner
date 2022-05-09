@@ -131,14 +131,14 @@ def get_options():
 ###########################
 # Main function
 if __name__ == "__main__":
-    print("Usage: python code.py <arrival_rate (0~1.0)> <seed> <schedular> <is_slowdown_control T/F> <communication_delay (steps/0.05s)>")
+    print("Usage: python code.py <arrival_rate (0~1.0)> <seed> <schedular> <is_slowdown_control T/F> <packet_loss probability 0~1.0> <communication_delay (steps/0.05s)>")
 
     seed = int(sys.argv[2])
     random.seed(seed)  # make tests reproducible
     numpy.random.seed(seed)
-    cfg.SCHEDULE_LOSS_PROBABILITY = 0
+    cfg.SCHEDULE_LOSS_PROBABILITY = float(sys.argv[5])
     cfg.CONTROL_DELAY_PROBABILITY = 0
-    cfg.COMM_DELAY_STEPS = int(sys.argv[5])
+    cfg.COMM_DELAY_STEPS = int(sys.argv[6])
 
     options = get_options()
 
