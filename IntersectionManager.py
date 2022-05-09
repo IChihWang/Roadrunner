@@ -12,6 +12,7 @@ from LaneAdviser import LaneAdviser
 from get_inter_length_info import Data
 
 inter_length_data = Data()
+delayed_D_dict = dict()
 
 class IntersectionManager:
     def __init__(self):
@@ -24,6 +25,7 @@ class IntersectionManager:
         self.leaving_cars = dict()   # Cars just entered the intersection (leave the CC zone)
 
         self.schedule_period_count = 0
+        self.comm_delay_count = 0
         self.lane_advisor = LaneAdviser()
         self.scheduling_thread = None
         self.in_lanes = []
@@ -177,7 +179,7 @@ class IntersectionManager:
         # Grouping the cars and schedule
         # Put here due to the thread handling
         self.schedule_period_count += cfg.TIME_STEP
-        if self.schedule_period_count > cfg.GZ_LEN/cfg.MAX_SPEED -1:
+        if self.schedule_period_count > cfg.GZ_LEN/cfg.MAX_SPEED - cfg.TIME_STEP:
 
             # Classify the cars for scheduler
             sched_car = []
@@ -227,8 +229,13 @@ class IntersectionManager:
 
 
             self.schedule_period_count = 0
+            self.comm_delay_count = -1  # reset the delay timer
 
-
+        self.comm_delay_count += 1
+        if self.comm_delay_count >= cfg.COMM_DELAY_STEPS:
+            self.comm_delay_count = -99999999   # Set to negative inf
+            for car_id, D in delayed_D_dict:
+                self.car_list[car_id].D = D
 
 
 
@@ -364,6 +371,7 @@ def Scheduling(lane_advisor, sched_car, n_sched_car,
                 pedestrian_time_mark_list, schedule_period_count,
                 schedule_time):
 
+    delayed_D_dict = dict()
     start = time.time()
     if int(sys.argv[3]) == 0:
         IcaccPlus(sched_car, n_sched_car, pedestrian_time_mark_list)
@@ -396,6 +404,7 @@ def Scheduling(lane_advisor, sched_car, n_sched_car,
     for car in n_sched_car:
         car.need_reschedule = False
 
+        # For packet loss and print
         if car.is_error == False:
             pass
         elif car.is_error == None and car.is_reschedule:
@@ -412,6 +421,12 @@ def Scheduling(lane_advisor, sched_car, n_sched_car,
                 to_be_deleted.append(car)
             else:
                 car.is_error = False
+
+        if COMM_DELAY_STEPS > 0:
+            delayed_D_dict[car.ID] = car.D
+            car.D = None
+
+
     for car in to_be_deleted:
         n_sched_car.remove(car)
     #'''

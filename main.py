@@ -101,7 +101,7 @@ def run():
     with open(file_name, 'a', newline='') as csvfile:
         writer = csv.writer(csvfile, dialect='excel-tab', quoting=csv.QUOTE_MINIMAL, delimiter = ',')
         to_write = [sys.argv[1], sys.argv[2], sys.argv[3],
-                    sys.argv[4], sys.argv[5], "_", simu_step, total_car_num, intersection_manager.car_num,
+                    sys.argv[4], int(sys.argv[5])*cfg.TIME_STEP, "_", simu_step, total_car_num, intersection_manager.car_num,
                     intersection_manager.total_delays/intersection_manager.car_num,
                     intersection_manager.total_delays_by_sche/intersection_manager.car_num,
                     intersection_manager.total_fuel_consumption/intersection_manager.fuel_consumption_count,
@@ -131,13 +131,14 @@ def get_options():
 ###########################
 # Main function
 if __name__ == "__main__":
-    print("Usage: python code.py <arrival_rate (0~1.0)> <seed> <schedular> <is_slowdown_control T/F>")
+    print("Usage: python code.py <arrival_rate (0~1.0)> <seed> <schedular> <is_slowdown_control T/F> <communication_delay (steps/0.05s)>")
 
     seed = int(sys.argv[2])
     random.seed(seed)  # make tests reproducible
     numpy.random.seed(seed)
     cfg.SCHEDULE_LOSS_PROBABILITY = 0
-    cfg.CONTROL_DELAY_PROBABILITY = float(sys.argv[5])
+    cfg.CONTROL_DELAY_PROBABILITY = 0
+    cfg.COMM_DELAY_STEPS = int(sys.argv[5])
 
     options = get_options()
 

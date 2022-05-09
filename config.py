@@ -29,7 +29,7 @@ CAR_MIN_LEN = 5
 CAR_AVG_LEN = (CAR_MAX_LEN+CAR_MIN_LEN)/2
 
 N_TIME_STEP = 3600  # number of time steps
-TIME_STEP = 0.1
+TIME_STEP = 0.05
 
 DISTANCE = 1.5 # 1.5 lane
 
@@ -38,5 +38,6 @@ PEDESTRIAN_TIME_GAP = 0 # 60 second
 
 RESCHEDULE_THREADSHOLD = TIME_STEP*2
 SCHEDULE_LOSS_PROBABILITY = None
-SCHEDULE_DELAY_MEAN = None      # schedule_transmit info delay mean & variance
+CONTROL_DELAY_MEAN = None      # schedule_transmit info delay mean & variance
 CONTROL_DELAY_PROBABILITY = None
+COMM_DELAY_STEPS = 0      # Default communication delay = 0
