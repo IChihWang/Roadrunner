@@ -101,7 +101,7 @@ def run():
     with open(file_name, 'a', newline='') as csvfile:
         writer = csv.writer(csvfile, dialect='excel-tab', quoting=csv.QUOTE_MINIMAL, delimiter = ',')
         to_write = [sys.argv[1], sys.argv[2], sys.argv[3],
-                    sys.argv[4], int(sys.argv[5])*cfg.TIME_STEP, "_", simu_step, total_car_num, intersection_manager.car_num,
+                    sys.argv[4], sys.argv[5], int(sys.argv[6])*cfg.TIME_STEP, "_", simu_step, total_car_num, intersection_manager.car_num,
                     intersection_manager.total_delays/intersection_manager.car_num,
                     intersection_manager.total_delays_by_sche/intersection_manager.car_num,
                     intersection_manager.total_fuel_consumption/intersection_manager.fuel_consumption_count,
