@@ -1,65 +1,24 @@
 
-rm result\result.csv
+For ($loss=0.05; $loss -le 0.05; $loss+=0.05) {
+  For ($delay=1; $delay -le 1; $delay++) {
+    For ($load=0.6; $load -le 0.8; $load+=0.05) {
+        python .\main.py $load 4 0 T $loss $delay
+    }
+  }
+}
 
-python .\main.py 0.5375 36 0 T 0.6
+For ($loss=0.05; $loss -le 0.05; $loss+=0.05) {
+  For ($delay=2; $delay -le 30; $delay++) {
+    For ($load=0.05; $load -le 0.8; $load+=0.05) {
+        python .\main.py $load 4 0 T $loss $delay
+    }
+  }
+}
 
-python .\main.py 0.3125 2 0 T 0.7
-python .\main.py 0.3125 2 0 T 0.9
-python .\main.py 0.3125 32 0 T 0.3
-python .\main.py 0.3125 33 0 T 0.6
-
-
-
-
-
-python .\main.py 0.5375 36 0 T 0.6
-python .\main.py 0.0625 36 0 T 0.7
-python .\main.py 0.0625 37 0 T 0.8
-
-
-python .\main.py 0.3125 66 0 T 0.3
-
-
-
-
-python .\main.py 0.0625 0 0 T 0.8
-python .\main.py 0.0625 1 0 T 0.9
-python .\main.py 0.3125 1 0 T 0.6
-python .\main.py 0.3125 1 0 T 0.9
-
-python .\main.py 0.5375 30 0 T 0.7
-python .\main.py 0.0625 30 0 T 0.8
-python .\main.py 0.0625 31 0 T 0.9
-python .\main.py 0.3125 1 0 T 0.8
-python .\main.py 0.3125 1 0 T 0.9
-
-
-
-
-python .\main.py 0.0625 2 0 T 0.8
-python .\main.py 0.3125 2 0 T 0.7
-python .\main.py 0.3125 2 0 T 0.9
-python .\main.py 0.0625 3 0 T 0.7
-python .\main.py 0.0625 3 0 T 0.9
-
-python .\main.py 0.3125 32 0 T 0.3
-python .\main.py 0.0625 33 0 T 0.6
-python .\main.py 0.0625 33 0 T 0.9
-python .\main.py 0.3125 33 0 T 0.6
-
-
-python .\main.py 0.0625 62 0 T 0.6
-python .\main.py 0.0625 62 0 T 0.8
-
-
-
-
-
-python .\main.py 0.0625 4 0 T 0.8
-python .\main.py 0.3125 4 0 T 0.8
-python .\main.py 0.5375 34 0 T 0.1
-python .\main.py 0.0625 34 0 T 0.5
-python .\main.py 0.0625 34 0 T 0.7
-python .\main.py 0.0625 34 0 T 0.9
-python .\main.py 0.0625 64 0 T 0.4
-
+For ($loss=0.1; $loss -le 0.95; $loss+=0.05) {
+  For ($delay=0; $delay -le 30; $delay++) {
+    For ($load=0.05; $load -le 0.8; $load+=0.05) {
+        python .\main.py $load 4 0 T $loss $delay
+    }
+  }
+}
