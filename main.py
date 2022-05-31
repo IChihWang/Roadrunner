@@ -103,7 +103,7 @@ def run():
                     sys.argv[4], sys.argv[5], int(sys.argv[6])*cfg.TIME_STEP, "_", simu_step, total_car_num, intersection_manager.car_num,
                     intersection_manager.total_delays/intersection_manager.car_num,
                     intersection_manager.total_delays_by_sche/intersection_manager.car_num,
-                    intersection_manager.total_fuel_consumption/intersection_manager.fuel_consumption_count,
+                    intersection_manager.total_fuel_consumption/intersection_manager.car_num,
                     sum(intersection_manager.schedule_time)/len(intersection_manager.schedule_time),
                     sum(intersection_manager.advice_time)/len(intersection_manager.advice_time),
                     sum(intersection_manager.CControl_time)/len(intersection_manager.CControl_time)]
@@ -140,7 +140,7 @@ if __name__ == "__main__":
     cfg.CONTROL_DELAY_PROBABILITY = 0
     cfg.COMM_DELAY_STEPS = 0
     cfg.COMM_DELAY_S =  0.001*int(sys.argv[5])
-    cfg.COMM_DELAY_DIS = cfg.COMM_DELAY*cfg.MAX_SPEED
+    cfg.COMM_DELAY_DIS = cfg.COMM_DELAY_S*cfg.MAX_SPEED
     cfg.HEADWAY += cfg.COMM_DELAY_DIS
     print("Headway: ", cfg.HEADWAY)
 
@@ -151,7 +151,7 @@ if __name__ == "__main__":
         sumoBinary = checkBinary('sumo')
     else:
         sumoBinary = checkBinary('sumo-gui')
-    sumoBinary = checkBinary('sumo')
+    sumoBinary = checkBinary('sumo-gui')
 
     # 0. Generate the intersection information files
     os.system("bash gen_intersection/gen_data.sh " + str(cfg.LANE_NUM_PER_DIRECTION))

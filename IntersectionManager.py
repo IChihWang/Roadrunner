@@ -77,8 +77,11 @@ class IntersectionManager:
                 turning = car_id[0]
 
                 new_car = Car(car_id, length, lane, turning)
-                new_car.Enter_T = simu_step - (traci.vehicle.getLanePosition(car_id))/cfg.MAX_SPEED
+                car_id_info = car_id.split("_")
+                car_real_arrival_diff = simu_step - int(car_id_info[2]) + (traci.vehicle.getLanePosition(car_id))/cfg.MAX_SPEED
+                new_car.Enter_T = simu_step - car_real_arrival_diff
                 self.car_list[car_id] = new_car
+                self.car_list[car_id].fuel_consumption+= car_real_arrival_diff*1.13 #( ideal gas consumption ml/s)
 
             # Set the position of each cars
             position = cfg.AZ_LEN + cfg.PZ_LEN + cfg.GZ_LEN+ cfg.BZ_LEN + cfg.CCZ_LEN - traci.vehicle.getLanePosition(car_id)
@@ -112,8 +115,8 @@ class IntersectionManager:
             if self.car_list[car_key].OT != None:
                 self.car_list[car_key].OT -= cfg.TIME_STEP
 
-            self.total_fuel_consumption += traci.vehicle.getFuelConsumption(car_key)*cfg.TIME_STEP
-            self.fuel_consumption_count += 1
+            self.car_list[car_key].fuel_consumption += traci.vehicle.getFuelConsumption(car_key)*cfg.TIME_STEP
+
 
         # ===== Entering the intersection (Record the cars) =====
         for car_id, car in self.car_list.items():
@@ -154,6 +157,7 @@ class IntersectionManager:
             # Measurement
             self.total_delays_by_sche += car.D
             self.car_num += 1
+            self.total_fuel_consumption += car.fuel_consumption
 
 
 
@@ -165,7 +169,7 @@ class IntersectionManager:
                 self.ccz_list[car_id] = car
                 to_be_deleted.append(car_id)
 
-                if is_slowdown_control == True && car.CC_is_CC_delayed == false:
+                if is_slowdown_control == True and car.CC_is_CC_delayed == False:
                     if (car.CC_state == "Preseting_done"):
                         car.CC_state = "CruiseControl_ready"
 

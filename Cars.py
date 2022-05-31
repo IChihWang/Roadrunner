@@ -51,7 +51,7 @@ class Car:
         self.speed_in_intersection = speed_in_intersection
 
         # ======================================================================
-
+        self.fuel_consumption = 0
 
 
         # ===== Information that might change during the simulation ============
@@ -81,7 +81,7 @@ class Car:
 
 
         # ===== Variables for Cruse Control ====================================
-        self.CC_is_CC_delayed = false
+        self.CC_is_CC_delayed = False
         self.CC_front_pos_diff = 0
 
         self.CC_slow_speed = cfg.MAX_SPEED

@@ -68,7 +68,7 @@ def generate_routefile(arrival_rate):
                         veh_str += "R"
                         idl = "R"
 
-                    veh_str += '_%i" type="car%i" route="route%s" depart="%i" departLane = "%i" departSpeed="%f"/>' % (vehNr, car_length, str(idx+1)+'_'+str((idx+dir_r)%4+1), i, lane_r, cfg.MAX_SPEED);
+                    veh_str += '_%i_%i" type="car%i" route="route%s" depart="%i" departLane = "%i" departSpeed="%f"/>' % (vehNr, i, car_length, str(idx+1)+'_'+str((idx+dir_r)%4+1), i, lane_r, cfg.MAX_SPEED);
                     idl += '_%i'% (vehNr);
                     idllist.append(idl)
                     print(veh_str, file=routes)
