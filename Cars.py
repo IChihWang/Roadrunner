@@ -81,6 +81,7 @@ class Car:
 
 
         # ===== Variables for Cruse Control ====================================
+        self.CC_is_CC_delayed = false
         self.CC_front_pos_diff = 0
 
         self.CC_slow_speed = cfg.MAX_SPEED

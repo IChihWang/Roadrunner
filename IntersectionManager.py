@@ -165,7 +165,7 @@ class IntersectionManager:
                 self.ccz_list[car_id] = car
                 to_be_deleted.append(car_id)
 
-                if is_slowdown_control == True:
+                if is_slowdown_control == True && car.CC_is_CC_delayed == false:
                     if (car.CC_state == "Preseting_done"):
                         car.CC_state = "CruiseControl_ready"
 
@@ -236,6 +236,10 @@ class IntersectionManager:
             self.comm_delay_count = -99999999   # Set to negative inf
             for car_id, D in delayed_D_dict.items():
                 self.car_list[car_id].D = D
+
+                # Determine if the CC is delayed by the communication
+                if car.position < cfg.CCZ_LEN + cfg.BZ_LEN + 2*(cfg.COMM_DELAY_DIS):
+                    car.CC_is_CC_delayed = true
 
 
 
