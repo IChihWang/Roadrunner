@@ -15,7 +15,7 @@ inter_length_data = Data()
 delayed_D_dict = dict()
 
 class IntersectionManager:
-    def __init__(self):
+    def __init__(self, scheduler):
         self.az_list = dict()
         self.pz_list = dict()
         self.ccz_list = dict()
@@ -52,6 +52,8 @@ class IntersectionManager:
         self.schedule_time = []
         self.advice_time = []
         self.CControl_time = []
+
+        self.scheduler = scheduler
 
 
         self.set_round_lane()
@@ -212,7 +214,9 @@ class IntersectionManager:
             self.pedestrian_time_mark_list = self.get_max_AT_direction(sched_car, self.is_pedestrian_list, self.pedestrian_time_mark_list)
             #print(self.pedestrian_time_mark_list)
 
-            Scheduling(self.lane_advisor,
+            Scheduling(
+                    self.scheduler,
+                    self.lane_advisor,
                     sched_car, n_sched_car,
                     advised_n_sched_car,
                     self.cc_list,
@@ -373,7 +377,7 @@ class IntersectionManager:
 
 ##########################
 # Scheduling thread that handles scheduling and update the table for lane advising
-def Scheduling(lane_advisor, sched_car, n_sched_car,
+def Scheduling(scheduler, lane_advisor, sched_car, n_sched_car,
                 advised_n_sched_car, cc_list, car_list,
                 pedestrian_time_mark_list, schedule_period_count,
                 schedule_time):
@@ -381,13 +385,13 @@ def Scheduling(lane_advisor, sched_car, n_sched_car,
 
     delayed_D_dict.clear()
     start = time.time()
-    if int(sys.argv[3]) == 0:
+    if int(scheduler) == 0:
         IcaccPlus(sched_car, n_sched_car, pedestrian_time_mark_list)
-    #elif int(sys.argv[3]) == 1:
-        #Icacc(sched_car, n_sched_car)
-    elif int(sys.argv[3]) == 2:
+    elif int(scheduler) == 1:
+        Icacc(n_sched_car)
+    elif int(scheduler) == 2:
         Fcfs(sched_car, n_sched_car, pedestrian_time_mark_list)
-    elif int(sys.argv[3]) == 3:
+    elif int(scheduler) == 3:
         Fcfs_not_reservation(sched_car, n_sched_car)
 
     lane_advisor.updateTableFromCars(n_sched_car, advised_n_sched_car)

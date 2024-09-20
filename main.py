@@ -19,6 +19,7 @@ import numpy
 import threading
 import time
 import numpy as np
+import argparse
 
 from ortools.linear_solver import pywraplp
 from sumolib import checkBinary
@@ -49,7 +50,7 @@ def run():
     """execute the TraCI control loop"""
     simu_step = 0
 
-    intersection_manager = IntersectionManager()
+    intersection_manager = IntersectionManager(scheduler)
 
 
     try:
@@ -76,7 +77,7 @@ def run():
                 intersection_manager.update_car(car_id, lane_id, simu_step)
 
             is_slowdown_control = False
-            if sys.argv[4] == 'T':
+            if slow_down == 'T':
                 is_slowdown_control = True
 
             intersection_manager.run(simu_step, is_slowdown_control)
@@ -87,7 +88,7 @@ def run():
 
     #debug_t = threading.Thread(target=debug_ring)
     #debug_t.start()
-    print(sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), sys.argv[4])
+    print(arrival_rate, int(seed), int(scheduler), slow_down)
 
     # Print out the measurements
     #print("Average total delay: ", total_delays/car_num)
@@ -99,8 +100,8 @@ def run():
     file_name = 'result/result.csv'
     with open(file_name, 'a', newline='') as csvfile:
         writer = csv.writer(csvfile, dialect='excel-tab', quoting=csv.QUOTE_MINIMAL, delimiter = ',')
-        to_write = [sys.argv[1], sys.argv[2], sys.argv[3],
-                    sys.argv[4], sys.argv[5], "_", simu_step, total_car_num, intersection_manager.car_num,
+        to_write = [arrival_rate, seed, scheduler,
+                    slow_down, comm_delay_handle, "_", simu_step, total_car_num, intersection_manager.car_num,
                     intersection_manager.total_delays/intersection_manager.car_num,
                     intersection_manager.total_delays_by_sche/intersection_manager.car_num,
                     intersection_manager.total_fuel_consumption/intersection_manager.car_num,
@@ -130,34 +131,51 @@ def get_options():
 ###########################
 # Main function
 if __name__ == "__main__":
-    #print("Usage: python code.py <arrival_rate (0~1.0)> <seed> <schedular> <is_slowdown_control T/F> <packet_loss probability 0~1.0> <communication_delay (steps/0.05s)>")
-    print("Usage: python code.py <arrival_rate (0~1.0)> <seed> <schedular> <is_slowdown_control T/F> <communication_delay (ms)>")
+    # Define parameter parser
+    parser = argparse.ArgumentParser(prog='PROG')
+    parser.add_argument('--rate', nargs='?', help='arrival_rate (0~1.0)', default=0.1)
+    parser.add_argument('--seed', nargs='?', help='seed', default=0)
+    parser.add_argument('--scheduler', nargs='?', help='0: Roadrunner, 1: ICCID, 2: FCFS, 3: FCFT', default=0)
+    parser.add_argument('--slow_down', nargs='?', help='is_slowdown_control <T/F>', default='T')
+    parser.add_argument('--comm_delay_handle', nargs='?', help='communication delay fed into the scheduler', default=0)
+    parser.add_argument('--gui', nargs='?', help='Enable GUI for simulation <T/F>', default='F')
+    args = parser.parse_args()
 
-    seed = int(sys.argv[2])
+    global seed
+    global arrival_rate
+    global scheduler
+    global slow_down
+    global comm_delay_handle
+    global gui
+
+    seed = int(args.seed)
+    arrival_rate = float(args.rate)
+    scheduler = int(args.scheduler)
+    slow_down = args.slow_down
+    comm_delay_handle = int(args.comm_delay_handle)
+    gui = args.gui
+
+
     random.seed(seed)  # make tests reproducible
     numpy.random.seed(seed)
     cfg.SCHEDULE_LOSS_PROBABILITY = 0
     cfg.CONTROL_DELAY_PROBABILITY = 0
     cfg.COMM_DELAY_STEPS = 0
-    cfg.COMM_DELAY_S =  0.001*int(sys.argv[5])
+    cfg.COMM_DELAY_S =  0.001*int(comm_delay_handle)
     cfg.COMM_DELAY_DIS = cfg.COMM_DELAY_S*cfg.MAX_SPEED
     cfg.HEADWAY += cfg.COMM_DELAY_DIS
     print("Headway: ", cfg.HEADWAY)
 
-    options = get_options()
-
     # this script has been called from the command line. It will start sumo as a server, then connect and run
-    if options.nogui:
+    if gui == 'F':
         sumoBinary = checkBinary('sumo')
     else:
         sumoBinary = checkBinary('sumo-gui')
-    sumoBinary = checkBinary('sumo')
 
     # 0. Generate the intersection information files
     os.system("bash gen_intersection/gen_data.sh " + str(cfg.LANE_NUM_PER_DIRECTION))
 
     # 1. Generate the route file for this simulation
-    arrival_rate = float(sys.argv[1])
     total_car_num = len(generate_routefile(arrival_rate))
 
 
