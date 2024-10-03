@@ -7,7 +7,7 @@
         <route-files value="icacc+.rou.xml"/>
         <additional-files value="icacc+.det.xml"/>
     </input>
-    
+
     <processing>
         <time-to-teleport value="-1"/>
 		<lanechange.duration value="0.5"/>
@@ -25,5 +25,10 @@
     <gui_only>
         <start value = 't'/>
     </gui_only>
+
+    <traci_server>
+      <remote-port value="9091" />
+      <num-clients value="1" />
+    </traci_server>
 
 </configuration>

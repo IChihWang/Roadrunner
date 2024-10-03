@@ -45,6 +45,7 @@ from IntersectionManager import IntersectionManager
 ###################
 
 total_car_num = 0
+traci_connection = None
 
 def run():
     """execute the TraCI control loop"""
@@ -54,26 +55,16 @@ def run():
 
 
     try:
-        while traci.simulation.getMinExpectedNumber() > 0:
+        while traci_connection.simulation.getMinExpectedNumber() > 0:
 
             if (simu_step*10)//1/10.0 == cfg.N_TIME_STEP:
                 break
-            '''
-            #if 'L_1383' in intersection_manager.car_list:
-            if (simu_step*10)//1/10.0 == 709:
-                car = intersection_manager.car_list['L_2508']
-                print(car.original_lane)
-                print(car.lane)
-                print(car.desired_lane)
 
-                raw_input()
-            #'''
-
-            traci.simulationStep()
-            all_c = traci.vehicle.getIDList()
+            traci_connection.simulationStep()
+            all_c = traci_connection.vehicle.getIDList()
             # Update the position of each car
             for car_id in all_c:
-                lane_id = traci.vehicle.getLaneID(car_id)
+                lane_id = traci_connection.vehicle.getLaneID(car_id)
                 intersection_manager.update_car(car_id, lane_id, simu_step)
 
             is_slowdown_control = False
@@ -112,7 +103,7 @@ def run():
 
     sys.stdout.flush()
 
-    traci.close()
+    traci_connection.close()
 
 
 
@@ -179,14 +170,13 @@ if __name__ == "__main__":
     total_car_num = len(generate_routefile(arrival_rate))
 
 
-
-
-
     try:
         # 3. This is the normal way of using traci. sumo is started as a subprocess and then the python script connects and runs
         traci.start([sumoBinary, "-c", "data/icacc+.sumocfg",
                                  "--tripinfo-output", "tripinfo.xml","--step-length", str(cfg.TIME_STEP),
-                                 "--collision.mingap-factor", "0"])
+                                 "--collision.mingap-factor", "0"], port=9091, label="vehicle_control")
+        traci_connection = traci.getConnection("vehicle_control")
+        traci_connection.setOrder(2)
 
         # 4. Start running SUMO
         run()

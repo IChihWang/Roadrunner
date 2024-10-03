@@ -284,7 +284,7 @@ class IntersectionManager:
         for car_id, car in sorted_ccontrol_list:
             start = time.time()
             # Cars perform their own CC
-            car.handle_CC_behavior(self.car_list)
+            car.handle_CC_behavior(self.car_list, simu_step)
             end = time.time()
             self.CControl_time.append(end - start)
 
