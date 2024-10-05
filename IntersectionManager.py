@@ -10,9 +10,12 @@ from Cars import Car
 from milp import IcaccPlus, Fcfs, FixedSignal, Fcfs_not_reservation
 from LaneAdviser import LaneAdviser
 from get_inter_length_info import Data
+from collections import OrderedDict
+from communication import get_communication_delay, get_retry_timeout
 
 inter_length_data = Data()
 delayed_D_dict = dict()
+delayed_D_per_car_dict = dict()     # Delayed to update car delay {time_step: [[car, delay]]}
 
 class IntersectionManager:
     def __init__(self, scheduler):
@@ -54,6 +57,9 @@ class IntersectionManager:
         self.CControl_time = []
 
         self.scheduler = scheduler
+
+        # Communication delay
+        self.gz_info_queue = OrderedDict()  # Delayed to notify the AIM {time_step: [car, zone]]
 
 
         self.set_round_lane()
@@ -99,8 +105,29 @@ class IntersectionManager:
                 self.car_list[car_id].zone_state = "PZ_not_set"
 
             elif (self.car_list[car_id].zone == "PZ") and (position <= cfg.GZ_LEN + cfg.BZ_LEN + cfg.CCZ_LEN):
-                self.car_list[car_id].zone = "GZ"
+                self.car_list[car_id].zone = "hold_G_Z"
                 self.car_list[car_id].zone_state = "not_scheduled"
+
+                # === Hold the state until the notification reaches AIM ===
+                # Get the communication delay
+                communication_delay = get_communication_delay(self.car_list[car_id].ID, 'AIM')
+                msg_arrive_time = simu_step + communication_delay
+
+
+                if msg_arrive_time != float('inf'):
+                    # Init the list
+                    if msg_arrive_time not in self.gz_info_queue:
+                        self.gz_info_queue[msg_arrive_time] = []
+
+                    self.gz_info_queue[msg_arrive_time].append([self.car_list[car_id], "GZ"])  # Delayed to notify the AIM
+                else:
+                    retry_time = simu_step + get_retry_timeout(self.car_list[car_id].ID, 'AIM')
+
+                    # Init the list
+                    if retry_time not in self.gz_info_queue:
+                        self.gz_info_queue[retry_time] = []
+
+                    self.gz_info_queue[retry_time].append([self.car_list[car_id], "PZ"])  # Retry the zone update
 
             elif (self.car_list[car_id].zone == "GZ") and (position <= cfg.BZ_LEN + cfg.CCZ_LEN):
                 self.car_list[car_id].zone = "BZ"
@@ -108,6 +135,19 @@ class IntersectionManager:
             elif (self.car_list[car_id].zone == "BZ") and (position <= cfg.CCZ_LEN):
                 self.car_list[car_id].zone = "CCZ"
 
+        # MSG reaches AIM, update the zone:
+        for time_step in list(self.gz_info_queue.keys()):
+            # Stop, not loading future info
+            if time_step > simu_step:
+                break
+
+            # Update the cars in the list
+            for car_to_update, next_zone in self.gz_info_queue[time_step]:
+                if car_to_update.zone == "hold_G_Z":  # to prevent zone revert
+                    car_to_update.zone = next_zone
+
+            # Delete the data that has been loaded
+            del self.gz_info_queue[time_step]
 
     def run(self, simu_step, is_slowdown_control):
 
@@ -200,7 +240,6 @@ class IntersectionManager:
                 elif car.zone == "PZ" or car.zone == "AZ":
                     advised_n_sched_car.append(car)
 
-
             for car in n_sched_car:
                 car.D = None
             ori_n_sched_car = n_sched_car
@@ -223,7 +262,8 @@ class IntersectionManager:
                     self.car_list,
                     self.pedestrian_time_mark_list,
                     self.schedule_period_count,
-                    self.schedule_time)
+                    self.schedule_time,
+                    simu_step)
 
             for car in ori_n_sched_car:
                 if car.is_control_delay:
@@ -239,6 +279,7 @@ class IntersectionManager:
             self.schedule_period_count = 0
             self.comm_delay_count = -1  # reset the delay timer
 
+        ''' # Old way of delay (a fixed communication delay)
         self.comm_delay_count += 1
         if self.comm_delay_count >= cfg.COMM_DELAY_STEPS:
             self.comm_delay_count = -99999999   # Set to negative inf
@@ -246,10 +287,24 @@ class IntersectionManager:
                 self.car_list[car_id].D = D
 
                 # Determine if the CC is delayed by the communication
+                car = self.car_list[car_id]
                 if car.position < cfg.CCZ_LEN + cfg.BZ_LEN + 2*(cfg.COMM_DELAY_DIS):
                     car.CC_is_CC_delayed = true
+        '''
 
+        # MSG reaches AIM, update the zone:
+        global delayed_D_per_car_dict
+        for time_step in list(delayed_D_per_car_dict.keys()):
+            # Stop, not loading future info
+            if time_step > simu_step:
+                break
 
+            # Update the cars in the list
+            for car_to_update, travel_delay in delayed_D_per_car_dict[time_step]:
+                car_to_update.D = travel_delay
+
+            # Delete the data that has been loaded
+            del delayed_D_per_car_dict[time_step]
 
         ################################################
         # Set Max Speed in PZ
@@ -380,7 +435,7 @@ class IntersectionManager:
 def Scheduling(scheduler, lane_advisor, sched_car, n_sched_car,
                 advised_n_sched_car, cc_list, car_list,
                 pedestrian_time_mark_list, schedule_period_count,
-                schedule_time):
+                schedule_time, simu_step):
 
 
     delayed_D_dict.clear()
@@ -434,9 +489,28 @@ def Scheduling(scheduler, lane_advisor, sched_car, n_sched_car,
             else:
                 car.is_error = False
 
+        ''' # old way of delay (fixed delay)
         if cfg.COMM_DELAY_STEPS > 0:
             delayed_D_dict[car.ID] = car.D
             car.D = None
+        '''
+
+        # Get the communication delay
+        communication_delay = get_communication_delay('AIM', car.ID)
+        msg_arrive_time = simu_step + communication_delay + cfg.COMPUTATION_DELAY
+
+        global delayed_D_per_car_dict
+
+        # Store the delay if the packet is not lost
+        if msg_arrive_time != float('inf'):
+
+            # Init the list
+            if msg_arrive_time not in delayed_D_per_car_dict:
+                delayed_D_per_car_dict[msg_arrive_time] = []
+
+            delayed_D_per_car_dict[msg_arrive_time].append([car, car.D])  # Delayed to update car delay {time_step: [[car, delay]]}
+
+        car.D = None
 
 
     for car in to_be_deleted:
