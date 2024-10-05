@@ -7,6 +7,8 @@ from __future__ import print_function
 import os
 import sys
 import math
+from collections import OrderedDict
+from communication import get_communication_delay
 
 sys.path.append('/usr/share/sumo/tools/')
 # we need to import python modules from the $SUMO_HOME/tools directory
@@ -95,12 +97,16 @@ class Car:
 
         # ======================================================================
 
+        self.front_car_info_queue = OrderedDict()  # {time_step: {speed: <speed>}
+        self.front_car_speed_cache = None          # Cache for the front car speed
+        self.current_simu_time = None
 
     def setPosition(self, pos):
         self.position = pos
 
 
-    def handle_CC_behavior(self, car_list):
+    def handle_CC_behavior(self, car_list, simu_step):
+        self.current_simu_time = simu_step
         front_car = None
         front_distance = None
         front_speed = None
@@ -292,16 +298,67 @@ class Car:
             traci.vehicle.setSpeed(self.ID, cfg.MAX_SPEED)
 
 
-
-
-    def CC_get_front_speed(self):
+    # Get the car ID of the front car of a platoon
+    def CC_get_platoon_head(self):
         if self.CC_front_car != None:
             if self.CC_front_car.CC_state != None and "Platoon" in self.CC_front_car.CC_state:
-                return self.CC_front_car.CC_get_front_speed()
+                return self.CC_front_car.CC_get_platoon_head()
             else:
-                return traci.vehicle.getSpeed(self.CC_front_car.ID) + traci.vehicle.getAcceleration(self.CC_front_car.ID)*cfg.TIME_STEP
+                return self.CC_front_car.ID
         else:
-            return traci.vehicle.getSpeed(self.ID) + traci.vehicle.getAcceleration(self.ID)*cfg.TIME_STEP
+            return self.ID
+
+    def CC_get_front_speed(self):
+        #########################################
+        # Request the speed from the platoon front car (store the speed for future)
+        if self.CC_front_car != None:
+            # Get the platoon head car
+            platoon_head_id = self.CC_get_platoon_head()
+
+            # Get the speed/acceleration from the head of platoon
+            platoon_head_speed = traci.vehicle.getSpeed(platoon_head_id) + traci.vehicle.getAcceleration(platoon_head_id)*cfg.TIME_STEP
+
+            # Get the communication delay
+            communication_delay = get_communication_delay(platoon_head_id, self.ID)
+
+            # Insert message into the queue based on the delay
+            if (communication_delay != float('inf')):       # skip the packets that is lost
+                msg_arrive_time = self.current_simu_time + communication_delay
+                self.front_car_info_queue[msg_arrive_time] = {'speed': platoon_head_speed}
+
+                # Remove the old data that followed by this message arrival (to prevent jitter)
+                for time_step in list(self.front_car_info_queue.keys()):
+                    if time_step > msg_arrive_time:
+                        del self.front_car_info_queue[time_step]
+
+        ##########################################
+        # Prepare the front speed
+        front_speed = None
+        if self.front_car_speed_cache == None:
+            front_speed = traci.vehicle.getSpeed(self.ID) + traci.vehicle.getAcceleration(self.ID)*cfg.TIME_STEP
+        else:
+            front_speed = self.front_car_speed_cache
+
+        # Get latest front car info
+        for time_step in list(self.front_car_info_queue.keys()):
+            # Stop, not loading future info
+            if time_step > self.current_simu_time:
+                break
+
+            # Get front car speed / acceleration
+            front_car_info = self.front_car_info_queue[time_step]
+
+            # Update the front car info
+            front_speed = front_car_info['speed']
+
+            # Delete the data that has been loaded
+            del self.front_car_info_queue[time_step]
+
+        # update the cache
+        self.front_car_speed_cache = front_speed
+
+        # return expected speed (at next time step)
+        return front_speed
 
 
     # Compute the shifts
