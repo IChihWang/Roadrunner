@@ -147,6 +147,12 @@ if __name__ == "__main__":
 
     random.seed(seed)  # make tests reproducible
     numpy.random.seed(seed)
+    cfg.SCHEDULE_LOSS_PROBABILITY = 0
+    cfg.CONTROL_DELAY_PROBABILITY = 0
+    cfg.COMM_DELAY_STEPS = 0
+    cfg.COMM_DELAY_S =  0.001*int(comm_delay_handle)
+    cfg.COMM_DELAY_DIS = cfg.COMM_DELAY_S*cfg.MAX_SPEED
+    cfg.HEADWAY += cfg.COMM_DELAY_DIS
 
     # this script has been called from the command line. It will start sumo as a server, then connect and run
     if gui == 'F':

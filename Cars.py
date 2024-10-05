@@ -7,6 +7,7 @@ from __future__ import print_function
 import os
 import sys
 import math
+import random
 from collections import OrderedDict
 from communication import get_communication_delay
 
@@ -52,7 +53,7 @@ class Car:
         self.speed_in_intersection = speed_in_intersection
 
         # ======================================================================
-
+        self.fuel_consumption = 0
 
 
         # ===== Information that might change during the simulation ============
@@ -82,19 +83,25 @@ class Car:
 
 
         # ===== Variables for Cruse Control ====================================
+        self.CC_is_CC_delayed = False
         self.CC_front_pos_diff = 0
 
         self.CC_slow_speed = cfg.MAX_SPEED
         self.CC_shift = None
-        self.CC_shift_end = 0
+        self.CC_shift_end = cfg.CCZ_DEC2_LEN+2*cfg.CCZ_ACC_LEN
 
         self.CC_state = None
         self.CC_slowdown_timer = 0
         self.CC_front_car = None
         self.CC_is_stop_n_go = False
 
+        self.is_reschedule = False  # Whether the car is scheduled
+        self.need_reschedule = None        # whether the car CURRENTLY need rescheduling
+        self.is_error = None
 
-
+        self.is_control_delay = False   # Whether we add some delay on control
+        self.original_delay = None     # Original delay told by the scheduler
+        #self.schedule_transmit_delay = max(0, random.gauss(cfg.SCHEDULE_DELAY_MEAN, cfg.SCHEDULE_DELAY_MEAN))
         # ======================================================================
 
         self.front_car_info_queue = OrderedDict()  # {time_step: {speed: <speed>}
@@ -114,6 +121,17 @@ class Car:
 
         leader_tuple = traci.vehicle.getLeader(self.ID)
 
+
+        if self.zone == "CCZ" and isinstance(self.D, float) and (not "Entering" in self.CC_state):
+            min_travel_time = (self.position - cfg.CCZ_ACC_LEN - cfg.CCZ_DEC2_LEN)/cfg.MAX_SPEED
+            my_speed = traci.vehicle.getSpeed(self.ID)
+            min_travel_time += (2*cfg.CCZ_ACC_LEN/(cfg.MAX_SPEED+my_speed))
+            min_travel_time += (2*cfg.CCZ_DEC2_LEN/(cfg.MAX_SPEED+cfg.TURN_SPEED))
+
+            if min_travel_time > self.OT + self.D + cfg.RESCHEDULE_THREADSHOLD:
+                self.zone_state == "not_scheduled"
+                self.is_reschedule = True
+                self.need_reschedule = True
 
         if leader_tuple != None:
             if leader_tuple[0] in car_list.keys():
@@ -141,45 +159,61 @@ class Car:
         # 2. If the car is ready for stopping
         if (self.position < (2*cfg.CCZ_ACC_LEN+cfg.CCZ_DEC2_LEN)) and ((self.CC_state == None) or (not ("Entering" in self.CC_state))):
             self.CC_state = "Entering_decelerate"
-            # Compute the slowdown speed
+
+            if self.is_control_delay:
+                self.need_reschedule = True
+                self.is_reschedule = True
+                self.D = self.original_delay
+
             my_speed = traci.vehicle.getSpeed(self.ID)
-            T = self.OT+self.D- ((cfg.CCZ_DEC2_LEN) / ((self.speed_in_intersection+cfg.MAX_SPEED)/2))
-            max_total_time = (self.position - (cfg.CCZ_ACC_LEN+cfg.CCZ_DEC2_LEN))/(my_speed/2) + cfg.CCZ_ACC_LEN/(cfg.MAX_SPEED/2)
 
-            if T > max_total_time:
-                self.CC_auto_stop_n_go = True
-                slow_down_speed = 0.001
-            elif T < 0:
-                slow_down_speed = cfg.MAX_SPEED
+            if isinstance(self.D, float) and (not self.need_reschedule):
+                # Compute the slowdown speed
+                T = self.OT+self.D- ((cfg.CCZ_DEC2_LEN) / ((self.speed_in_intersection+cfg.MAX_SPEED)/2))
+                max_total_time = (self.position - (cfg.CCZ_ACC_LEN+cfg.CCZ_DEC2_LEN))/(my_speed/2) + cfg.CCZ_ACC_LEN/(cfg.MAX_SPEED/2)
+
+                if T > max_total_time:
+                    slow_down_speed = 0.001
+                elif T < 0:
+                    slow_down_speed = cfg.MAX_SPEED
+                else:
+                    x1 = self.position - (cfg.CCZ_ACC_LEN+cfg.CCZ_DEC2_LEN)
+                    x2 = cfg.CCZ_ACC_LEN
+                    v1 = my_speed
+                    vm = cfg.MAX_SPEED
+
+                    a = T
+                    b = (vm*T+v1*T-2*x1-2*x2)
+                    c = (vm*v1*T-2*x1*vm-2*x2*v1)
+
+                    slow_down_speed = max( (-b-math.sqrt(b**2-4*a*c))/(2*a), (-b+math.sqrt(b**2-4*a*c))/(2*a))
+                    slow_down_speed = min(slow_down_speed, cfg.MAX_SPEED)
+
+                self.CC_slow_speed = slow_down_speed
+                if slow_down_speed < 0:
+                    print(self.ID, T, max_total_time, slow_down_speed)
+                    print(self.ID, x1, x2, v1, vm)
+                slow_down_speed = max(slow_down_speed, 0.001)
+                traci.vehicle.setMaxSpeed(self.ID, slow_down_speed)
+                dec_time = (self.position-(cfg.CCZ_ACC_LEN+cfg.CCZ_DEC2_LEN)) / ((my_speed+slow_down_speed)/2)
+                self.CC_slowdown_timer = dec_time
+                if (dec_time < 0):
+                    print(self.ID, slow_down_speed, dec_time, self.position, my_speed+slow_down_speed)
+                traci.vehicle.slowDown(self.ID,slow_down_speed, dec_time)
             else:
-                x1 = self.position - (cfg.CCZ_ACC_LEN+cfg.CCZ_DEC2_LEN)
-                x2 = cfg.CCZ_ACC_LEN
-                v1 = my_speed
-                vm = cfg.MAX_SPEED
-
-                a = T
-                b = (vm*T+v1*T-2*x1-2*x2)
-                c = (vm*v1*T-2*x1*vm-2*x2*v1)
-
-                slow_down_speed = max( (-b-math.sqrt(b**2-4*a*c))/(2*a), (-b+math.sqrt(b**2-4*a*c))/(2*a))
-                slow_down_speed = min(slow_down_speed, cfg.MAX_SPEED)
-
-            self.CC_slow_speed = slow_down_speed
-            if slow_down_speed < 0:
-                print(self.ID, T, max_total_time, slow_down_speed)
-                print(self.ID, x1, x2, v1, vm)
-            traci.vehicle.setMaxSpeed(self.ID, slow_down_speed)
-            dec_time = (self.position-(cfg.CCZ_ACC_LEN+cfg.CCZ_DEC2_LEN)) / ((my_speed+slow_down_speed)/2)
-            self.CC_slowdown_timer = dec_time
-            if (dec_time < 0):
-                print(self.ID, slow_down_speed, dec_time, self.position, my_speed+slow_down_speed)
-            traci.vehicle.slowDown(self.ID,slow_down_speed, dec_time)
-
-
+                slow_down_speed = 0.001
+                dec_time = (self.position-(cfg.CCZ_ACC_LEN+cfg.CCZ_DEC2_LEN)) / ((my_speed+slow_down_speed)/2)
+                self.CC_slowdown_timer = dec_time
+                self.CC_slow_speed = slow_down_speed
+                traci.vehicle.setMaxSpeed(self.ID, slow_down_speed)
+                traci.vehicle.slowDown(self.ID,slow_down_speed , dec_time)
 
         elif (self.CC_state == "Entering_decelerate" or self.CC_state == "Entering_wait") and (self.CC_slowdown_timer <= 0):
             traci.vehicle.setSpeed(self.ID, self.CC_slow_speed)
-            wait_time = self.OT+self.D - ((self.position - cfg.CCZ_DEC2_LEN) / ((cfg.MAX_SPEED+self.CC_slow_speed)/2)) - ((cfg.CCZ_DEC2_LEN) / ((self.speed_in_intersection+cfg.MAX_SPEED)/2))
+
+            wait_time = cfg.LARGE_NUM
+            if isinstance(self.D, float) and (not self.need_reschedule):
+                wait_time = self.OT+self.D - ((self.position - cfg.CCZ_DEC2_LEN) / ((cfg.MAX_SPEED+self.CC_slow_speed)/2)) - ((cfg.CCZ_DEC2_LEN) / ((self.speed_in_intersection+cfg.MAX_SPEED)/2))
 
             if wait_time > 0:
                 self.CC_state = "Entering_wait"
@@ -261,13 +295,17 @@ class Car:
              traci.vehicle.setSpeed(self.ID, cfg.MAX_SPEED)
 
         elif (self.CC_state == "CruiseControl_ready"):
-            reply = self.CC_get_shifts(car_list)
-            self.CC_get_slow_down_speed()
-            if self.CC_is_stop_n_go == True:
-                # Only stop at very closed to the intersection
+            if self.is_reschedule == True:
+                self.CC_is_stop_n_go = True
                 self.CC_state = "Keep_Max_speed"
             else:
-                self.CC_state = "CruiseControl_shift_start"
+                reply = self.CC_get_shifts(car_list)
+                self.CC_get_slow_down_speed()
+                if self.CC_is_stop_n_go == True:
+                    # Only stop at very closed to the intersection
+                    self.CC_state = "Keep_Max_speed"
+                else:
+                    self.CC_state = "CruiseControl_shift_start"
 
         elif (self.CC_state == "CruiseControl_shift_start") and self.position < (cfg.CCZ_LEN-self.CC_shift):
             self.CC_state = "CruiseControl_decelerate"
@@ -296,7 +334,6 @@ class Car:
         elif (self.CC_state == "CruiseControl_accelerate") and (self.CC_slowdown_timer <= 0):
             self.CC_state == "CruiseControl_max_speed"
             traci.vehicle.setSpeed(self.ID, cfg.MAX_SPEED)
-
 
     # Get the car ID of the front car of a platoon
     def CC_get_platoon_head(self):
@@ -360,7 +397,6 @@ class Car:
         # return expected speed (at next time step)
         return front_speed
 
-
     # Compute the shifts
     def CC_get_shifts(self, car_list):
         # 1.1 Determine how much to advance the car acceleration (shift_end)
@@ -376,6 +412,8 @@ class Car:
                 # The car is going to catch up the front car
                 shifting_end = self.CC_front_car.CC_shift_end + self.CC_front_car.length + cfg.HEADWAY
                 is_catching_up_front = True
+
+            shifting_end = max(shifting_end, cfg.CCZ_DEC2_LEN+2*cfg.CCZ_ACC_LEN)
             self.CC_shift_end = shifting_end
 
 
@@ -390,10 +428,11 @@ class Car:
 
             #2 Compute catch up time and reflect to the space
             catch_up_t = space_between_two/(cfg.MAX_SPEED-self.CC_front_car.CC_slow_speed)
+
             cc_shift_max += catch_up_t*cfg.MAX_SPEED
 
-        cc_shift_max = min(cc_shift_max, cfg.CCZ_LEN-self.CC_shift_end-2*cfg.CCZ_ACC_LEN)
 
+        cc_shift_max = min(cc_shift_max, cfg.CCZ_LEN-self.CC_shift_end-2*cfg.CCZ_ACC_LEN)
 
         # 1.3 Determine the delay it desires. Reserving for the following cars
         # Count cars that'll enter CCZ during the delaying
@@ -428,7 +467,7 @@ class Car:
 
         # 1.4 Decide the final shift
         shifting = min(reserve_shift, cc_shift_max)
-
+        shifting = max(shifting, cfg.CCZ_LEN-self.position)
         self.CC_shift = shifting
 
         return {'shifting': shifting, 'shifting_end': self.CC_shift_end}
@@ -459,8 +498,7 @@ class Car:
 
 
         # Determine if there's stop and go
-        if speed == 0:
+        if speed == 0 or S2 < 0:
             self.CC_is_stop_n_go = True
-
 
         self.CC_slow_speed = speed

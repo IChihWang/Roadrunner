@@ -4,14 +4,18 @@ import config as cfg
 import traci
 import threading
 import time
-
+import random
 
 from Cars import Car
-from milp import Icacc, IcaccPlus, Fcfs, FixedSignal, Fcfs_not_reservation
+from milp import IcaccPlus, Fcfs, FixedSignal, Fcfs_not_reservation
 from LaneAdviser import LaneAdviser
 from get_inter_length_info import Data
+from collections import OrderedDict
+from communication import get_communication_delay, get_retry_timeout
 
 inter_length_data = Data()
+delayed_D_dict = dict()
+delayed_D_per_car_dict = dict()     # Delayed to update car delay {time_step: [[car, delay]]}
 
 class IntersectionManager:
     def __init__(self, scheduler):
@@ -24,6 +28,7 @@ class IntersectionManager:
         self.leaving_cars = dict()   # Cars just entered the intersection (leave the CC zone)
 
         self.schedule_period_count = 0
+        self.comm_delay_count = 0
         self.lane_advisor = LaneAdviser()
         self.scheduling_thread = None
         self.in_lanes = []
@@ -53,6 +58,10 @@ class IntersectionManager:
 
         self.scheduler = scheduler
 
+        # Communication delay
+        self.gz_info_queue = OrderedDict()  # Delayed to notify the AIM {time_step: [car, zone]]
+
+
         self.set_round_lane()
 
 
@@ -76,8 +85,11 @@ class IntersectionManager:
                 turning = car_id[0]
 
                 new_car = Car(car_id, length, lane, turning)
-                new_car.Enter_T = simu_step - (traci.vehicle.getLanePosition(car_id))/cfg.MAX_SPEED
+                car_id_info = car_id.split("_")
+                car_real_arrival_diff = simu_step - int(car_id_info[2]) + (traci.vehicle.getLanePosition(car_id))/cfg.MAX_SPEED
+                new_car.Enter_T = simu_step - car_real_arrival_diff
                 self.car_list[car_id] = new_car
+                self.car_list[car_id].fuel_consumption+= car_real_arrival_diff*1.13 #( ideal gas consumption ml/s)
 
             # Set the position of each cars
             position = cfg.AZ_LEN + cfg.PZ_LEN + cfg.GZ_LEN+ cfg.BZ_LEN + cfg.CCZ_LEN - traci.vehicle.getLanePosition(car_id)
@@ -93,8 +105,29 @@ class IntersectionManager:
                 self.car_list[car_id].zone_state = "PZ_not_set"
 
             elif (self.car_list[car_id].zone == "PZ") and (position <= cfg.GZ_LEN + cfg.BZ_LEN + cfg.CCZ_LEN):
-                self.car_list[car_id].zone = "GZ"
+                self.car_list[car_id].zone = "hold_G_Z"
                 self.car_list[car_id].zone_state = "not_scheduled"
+
+                # === Hold the state until the notification reaches AIM ===
+                # Get the communication delay
+                communication_delay = get_communication_delay(self.car_list[car_id].ID, 'AIM')
+                msg_arrive_time = simu_step + communication_delay
+
+
+                if msg_arrive_time != float('inf'):
+                    # Init the list
+                    if msg_arrive_time not in self.gz_info_queue:
+                        self.gz_info_queue[msg_arrive_time] = []
+
+                    self.gz_info_queue[msg_arrive_time].append([self.car_list[car_id], "GZ"])  # Delayed to notify the AIM
+                else:
+                    retry_time = simu_step + get_retry_timeout(self.car_list[car_id].ID, 'AIM')
+
+                    # Init the list
+                    if retry_time not in self.gz_info_queue:
+                        self.gz_info_queue[retry_time] = []
+
+                    self.gz_info_queue[retry_time].append([self.car_list[car_id], "PZ"])  # Retry the zone update
 
             elif (self.car_list[car_id].zone == "GZ") and (position <= cfg.BZ_LEN + cfg.CCZ_LEN):
                 self.car_list[car_id].zone = "BZ"
@@ -102,6 +135,19 @@ class IntersectionManager:
             elif (self.car_list[car_id].zone == "BZ") and (position <= cfg.CCZ_LEN):
                 self.car_list[car_id].zone = "CCZ"
 
+        # MSG reaches AIM, update the zone:
+        for time_step in list(self.gz_info_queue.keys()):
+            # Stop, not loading future info
+            if time_step > simu_step:
+                break
+
+            # Update the cars in the list
+            for car_to_update, next_zone in self.gz_info_queue[time_step]:
+                if car_to_update.zone == "hold_G_Z":  # to prevent zone revert
+                    car_to_update.zone = next_zone
+
+            # Delete the data that has been loaded
+            del self.gz_info_queue[time_step]
 
     def run(self, simu_step, is_slowdown_control):
 
@@ -111,8 +157,7 @@ class IntersectionManager:
             if self.car_list[car_key].OT != None:
                 self.car_list[car_key].OT -= cfg.TIME_STEP
 
-            self.total_fuel_consumption += traci.vehicle.getFuelConsumption(car_key)*cfg.TIME_STEP
-            self.fuel_consumption_count += 1
+            self.car_list[car_key].fuel_consumption += traci.vehicle.getFuelConsumption(car_key)*cfg.TIME_STEP
 
 
         # ===== Entering the intersection (Record the cars) =====
@@ -121,30 +166,20 @@ class IntersectionManager:
             if lane_id not in self.in_lanes:
                 traci.vehicle.setSpeed(car_id, car.speed_in_intersection)
 
-                if not car_id in self.leaving_cars:
+                self.leaving_cars[car_id] = self.car_list[car_id]
+                if self.car_list[car_id].Leave_T == None:
                     self.car_list[car_id].Leave_T = simu_step
-                    self.total_delays += (car.Leave_T - car.Enter_T) - ((cfg.CCZ_LEN+cfg.GZ_LEN+cfg.BZ_LEN+cfg.PZ_LEN+cfg.AZ_LEN)/cfg.MAX_SPEED)
 
-                    # Measurement
-                    self.total_delays_by_sche += car.D
-                    self.car_num += 1
+                    if car.D+car.OT <= -0.4 or car.D+car.OT >= 0.4:
+                        print("DEBUG: Car didn't arrive at the intersection at right time.")
 
-                    self.leaving_cars[car_id] = self.car_list[car_id]
-
-
-                '''
-                if car.D+car.OT <= -0.4 or car.D+car.OT >= 0.4:
-                    print("DEBUG: Car didn't arrive at the intersection at right time.")
-
-                    print("ID", car.ID)
-                    print("OT+D", car.D+car.OT)
-                    print("lane", car.lane)
-                    print("D", car.D)
-                    print("OT", car.OT)
-                    print("=======")
-                    print("-----------------")
-                '''
-
+                        print("ID", car.ID)
+                        print("OT+D", car.D+car.OT)
+                        print("lane", car.lane)
+                        print("D", car.D)
+                        print("OT", car.OT)
+                        print("=======")
+                        print("-----------------")
 
 
         # ===== Leaving the intersection (Reset the speed to V_max) =====
@@ -155,17 +190,16 @@ class IntersectionManager:
                 traci.vehicle.setSpeed(car_id, cfg.MAX_SPEED)
                 to_be_deleted.append(car_id)
 
-
         for car_id in to_be_deleted:
             del self.leaving_cars[car_id]
             del self.ccz_list[car_id]
             self.car_list.pop(car_id)
 
-            #self.car_list[car_id].Leave_T = simu_step
-            #self.total_delays += (car.Leave_T - car.Enter_T) - ((cfg.CCZ_LEN+cfg.GZ_LEN+cfg.BZ_LEN+cfg.PZ_LEN+cfg.AZ_LEN)/cfg.MAX_SPEED)
-
-            #self.total_delays_by_sche += car.D
-            #self.car_num += 1
+            self.total_delays += (car.Leave_T - car.Enter_T) - ((cfg.CCZ_LEN+cfg.GZ_LEN+cfg.BZ_LEN+cfg.PZ_LEN+cfg.AZ_LEN)/cfg.MAX_SPEED)
+            # Measurement
+            self.total_delays_by_sche += car.D
+            self.car_num += 1
+            self.total_fuel_consumption += car.fuel_consumption
 
 
 
@@ -177,7 +211,7 @@ class IntersectionManager:
                 self.ccz_list[car_id] = car
                 to_be_deleted.append(car_id)
 
-                if is_slowdown_control == True:
+                if is_slowdown_control == True and car.CC_is_CC_delayed == False:
                     if (car.CC_state == "Preseting_done"):
                         car.CC_state = "CruiseControl_ready"
 
@@ -191,71 +225,86 @@ class IntersectionManager:
         # Grouping the cars and schedule
         # Put here due to the thread handling
         self.schedule_period_count += cfg.TIME_STEP
-        if self.schedule_period_count > cfg.GZ_LEN/cfg.MAX_SPEED -1:
-            if self.scheduling_thread == None or (not self.scheduling_thread.is_alive()):
+        if self.schedule_period_count > cfg.GZ_LEN/cfg.MAX_SPEED - cfg.TIME_STEP:
 
-                # Classify the cars for scheduler
-                sched_car = []
-                n_sched_car = []
-                advised_n_sched_car = []
-                for car_id, car in self.car_list.items():
-                    if car.zone == "GZ" or car.zone == "BZ" or car.zone == "CCZ":
-                        if car.zone_state == "not_scheduled":
-                            n_sched_car.append(car)
-                        else:
-                            sched_car.append(car)
-                    elif car.zone == "PZ" or car.zone == "AZ":
-                        advised_n_sched_car.append(car)
+            # Classify the cars for scheduler
+            sched_car = []
+            n_sched_car = []
+            advised_n_sched_car = []
+            for car_id, car in self.car_list.items():
+                if car.zone == "GZ" or car.zone == "BZ" or car.zone == "CCZ":
+                    if isinstance(car.D, float) and (not car.need_reschedule):
+                        sched_car.append(car)
+                    else:
+                        n_sched_car.append(car)
+                elif car.zone == "PZ" or car.zone == "AZ":
+                    advised_n_sched_car.append(car)
 
+            for car in n_sched_car:
+                car.D = None
+            ori_n_sched_car = n_sched_car
 
+            # Setting the pedestrian list
+            self.is_pedestrian_list = [True]*4
+            for direction in range(4):
+                # Cancel the request if a pedestrian time has been scheduled
+                if self.is_pedestrian_list[direction] == True and self.pedestrian_time_mark_list[direction] != None:
+                    self.is_pedestrian_list[direction] = False
+            self.pedestrian_time_mark_list = self.get_max_AT_direction(sched_car, self.is_pedestrian_list, self.pedestrian_time_mark_list)
+            #print(self.pedestrian_time_mark_list)
 
-                for c_idx in range(len(n_sched_car)):
-                    traci.vehicle.setColor(n_sched_car[c_idx].ID, (100,250,92))
-                    n_sched_car[c_idx].D = None
+            Scheduling(
+                    self.scheduler,
+                    self.lane_advisor,
+                    sched_car, n_sched_car,
+                    advised_n_sched_car,
+                    self.cc_list,
+                    self.car_list,
+                    self.pedestrian_time_mark_list,
+                    self.schedule_period_count,
+                    self.schedule_time,
+                    simu_step)
 
-
-                # Setting the pedestrian list
-                self.is_pedestrian_list = [True]*4
-                for direction in range(4):
-                    # Cancel the request if a pedestrian time has been scheduled
-                    if self.is_pedestrian_list[direction] == True and self.pedestrian_time_mark_list[direction] != None:
-                        self.is_pedestrian_list[direction] = False
-                self.pedestrian_time_mark_list = self.get_max_AT_direction(sched_car, self.is_pedestrian_list, self.pedestrian_time_mark_list)
-                #print(self.pedestrian_time_mark_list)
-
-                '''
-                print(len(n_sched_car))
-                for car in n_sched_car:
-                    in_dir = car.in_dir
-                    out_dir = car.out_dir
-                    if self.pedestrian_time_mark_list[out_dir] != None:
-                        traci.vehicle.setColor(car.ID, (255,187,59))
-                    if self.pedestrian_time_mark_list[in_dir] != None:
-                        traci.vehicle.setColor(car.ID, (255,59,59))
-                '''
-
-                self.scheduling_thread = threading.Thread(target = Scheduling,
-                                                        args = (self.scheduler,
-                                                                self.lane_advisor,
-                                                                sched_car, n_sched_car,
-                                                                advised_n_sched_car,
-                                                                self.cc_list,
-                                                                self.car_list,
-                                                                self.pedestrian_time_mark_list,
-                                                                self.schedule_period_count,
-                                                                self.schedule_time))
-                self.scheduling_thread.start()
+            for car in ori_n_sched_car:
+                if car.is_control_delay:
+                    traci.vehicle.setColor(car.ID, (255,128,0))
+                elif car.is_error:
+                    traci.vehicle.setColor(car.ID, (255,0,0))
+                elif not car.is_reschedule:
+                    traci.vehicle.setColor(car.ID, (100,250,92))
+                else:
+                    traci.vehicle.setColor(car.ID, (255,51,255))
 
 
-                self.schedule_period_count = 0
+            self.schedule_period_count = 0
+            self.comm_delay_count = -1  # reset the delay timer
 
-            else:
-                print("Warning: the update period does not sync with the length of GZ")
+        ''' # Old way of delay (a fixed communication delay)
+        self.comm_delay_count += 1
+        if self.comm_delay_count >= cfg.COMM_DELAY_STEPS:
+            self.comm_delay_count = -99999999   # Set to negative inf
+            for car_id, D in delayed_D_dict.items():
+                self.car_list[car_id].D = D
 
+                # Determine if the CC is delayed by the communication
+                car = self.car_list[car_id]
+                if car.position < cfg.CCZ_LEN + cfg.BZ_LEN + 2*(cfg.COMM_DELAY_DIS):
+                    car.CC_is_CC_delayed = true
+        '''
 
+        # MSG reaches AIM, update the zone:
+        global delayed_D_per_car_dict
+        for time_step in list(delayed_D_per_car_dict.keys()):
+            # Stop, not loading future info
+            if time_step > simu_step:
+                break
 
+            # Update the cars in the list
+            for car_to_update, travel_delay in delayed_D_per_car_dict[time_step]:
+                car_to_update.D = travel_delay
 
-
+            # Delete the data that has been loaded
+            del delayed_D_per_car_dict[time_step]
 
         ################################################
         # Set Max Speed in PZ
@@ -386,13 +435,15 @@ class IntersectionManager:
 def Scheduling(scheduler, lane_advisor, sched_car, n_sched_car,
                 advised_n_sched_car, cc_list, car_list,
                 pedestrian_time_mark_list, schedule_period_count,
-                schedule_time):
+                schedule_time, simu_step):
 
+
+    delayed_D_dict.clear()
     start = time.time()
     if int(scheduler) == 0:
         IcaccPlus(sched_car, n_sched_car, pedestrian_time_mark_list)
     elif int(scheduler) == 1:
-        Icacc(sched_car, n_sched_car)
+        Icacc(n_sched_car)
     elif int(scheduler) == 2:
         Fcfs(sched_car, n_sched_car, pedestrian_time_mark_list)
     elif int(scheduler) == 3:
@@ -413,3 +464,62 @@ def Scheduling(scheduler, lane_advisor, sched_car, n_sched_car,
 
     end = time.time()
     schedule_time.append(end-start)
+
+
+    #'''
+    to_be_deleted = []
+    for car in n_sched_car:
+        car.need_reschedule = False
+
+        # For packet loss and print
+        if car.is_error == False:
+            pass
+        elif car.is_error == None and car.is_reschedule:
+            # Reschedule is called by the Car
+            car.is_error = False
+
+        elif car.is_error == None or car.is_error == True:
+            # Reschedule is called by the Noise
+            if random.uniform(0, 1) < cfg.SCHEDULE_LOSS_PROBABILITY:
+                car.is_error = True
+                car.is_reschedule = True
+                car.need_reschedule = True
+                car.D = None
+                to_be_deleted.append(car)
+            else:
+                car.is_error = False
+
+        ''' # old way of delay (fixed delay)
+        if cfg.COMM_DELAY_STEPS > 0:
+            delayed_D_dict[car.ID] = car.D
+            car.D = None
+        '''
+
+        # Get the communication delay
+        communication_delay = get_communication_delay('AIM', car.ID)
+        msg_arrive_time = simu_step + communication_delay + cfg.COMPUTATION_DELAY
+
+        global delayed_D_per_car_dict
+
+        # Store the delay if the packet is not lost
+        if msg_arrive_time != float('inf'):
+
+            # Init the list
+            if msg_arrive_time not in delayed_D_per_car_dict:
+                delayed_D_per_car_dict[msg_arrive_time] = []
+
+            delayed_D_per_car_dict[msg_arrive_time].append([car, car.D])  # Delayed to update car delay {time_step: [[car, delay]]}
+
+        car.D = None
+
+
+    for car in to_be_deleted:
+        n_sched_car.remove(car)
+    #'''
+
+    for car in n_sched_car:
+        car.original_delay = car.D
+        if not car.is_control_delay and not car.need_reschedule:
+            if random.uniform(0, 1) < cfg.CONTROL_DELAY_PROBABILITY:
+                car.is_control_delay = True
+                car.D += random.uniform(0, 5)
