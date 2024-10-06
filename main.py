@@ -170,8 +170,8 @@ if __name__ == "__main__":
     try:
         # 3. This is the normal way of using traci. sumo is started as a subprocess and then the python script connects and runs
         traci.start([sumoBinary, "-c", "data/icacc+.sumocfg",
-                                 "--tripinfo-output", "tripinfo.xml","--step-length", str(cfg.TIME_STEP),
-                                 "--collision.mingap-factor", "0"], port=9091, label="vehicle_control")
+                                 "--tripinfo-output", "tripinfo.xml", "--step-length", str(cfg.TIME_STEP),
+                                 "--collision.mingap-factor", "0", "--collision.stoptime", "0.01"], port=9091, label="vehicle_control")
 
         traci_connection = traci.getConnection("vehicle_control")
         traci_connection.setOrder(2)
