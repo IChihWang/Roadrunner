@@ -30,6 +30,7 @@ import config as cfg
 import csv
 
 from gen_route import generate_routefile
+from communication import read_delay_from_csv
 
 
 # For debug
@@ -61,6 +62,7 @@ def run():
                 break
 
             traci_connection.simulationStep()
+            read_delay_from_csv()
             all_c = traci_connection.vehicle.getIDList()
             # Update the position of each car
             for car_id in all_c:
@@ -174,7 +176,9 @@ if __name__ == "__main__":
         # 3. This is the normal way of using traci. sumo is started as a subprocess and then the python script connects and runs
         traci.start([sumoBinary, "-c", "data/icacc+.sumocfg",
                                  "--tripinfo-output", "tripinfo.xml","--step-length", str(cfg.TIME_STEP),
-                                 "--collision.mingap-factor", "0"], port=9091, label="vehicle_control")
+                                 "--collision.mingap-factor", "0",
+                                 "--collision.action", "warn",
+                                 "--collision.stoptime", "0.1"], port=9091, label="vehicle_control")
         traci_connection = traci.getConnection("vehicle_control")
         traci_connection.setOrder(2)
 

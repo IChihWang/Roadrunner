@@ -28,7 +28,7 @@
 
     <traci_server>
       <remote-port value="9091" />
-      <num-clients value="1" />
+      <num-clients value="2" />
     </traci_server>
 
 </configuration>

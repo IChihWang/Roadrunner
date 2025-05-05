@@ -110,7 +110,7 @@ class IntersectionManager:
 
                 # === Hold the state until the notification reaches AIM ===
                 # Get the communication delay
-                communication_delay = get_communication_delay(self.car_list[car_id].ID, 'AIM')
+                communication_delay = get_communication_delay(self.car_list[car_id].ID, 'AIM', simu_step)
                 msg_arrive_time = simu_step + communication_delay
 
 
@@ -496,7 +496,7 @@ def Scheduling(scheduler, lane_advisor, sched_car, n_sched_car,
         '''
 
         # Get the communication delay
-        communication_delay = get_communication_delay('AIM', car.ID)
+        communication_delay = get_communication_delay('AIM', car.ID, simu_step)
         msg_arrive_time = simu_step + communication_delay + cfg.COMPUTATION_DELAY
 
         global delayed_D_per_car_dict

@@ -356,7 +356,7 @@ class Car:
             platoon_head_speed = traci.vehicle.getSpeed(platoon_head_id) + traci.vehicle.getAcceleration(platoon_head_id)*cfg.TIME_STEP
 
             # Get the communication delay
-            communication_delay = get_communication_delay(platoon_head_id, self.ID)
+            communication_delay = get_communication_delay(platoon_head_id, self.ID, self.current_simu_time)
 
             # Insert message into the queue based on the delay
             if (communication_delay != float('inf')):       # skip the packets that is lost
